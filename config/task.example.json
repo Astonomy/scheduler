@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "project-tree-001",
+  "workspace": "D:/code/example-project",
+  "tree": {
+    "id": "root",
+    "prompt": "Implement the first stage described in this node.",
+    "children": [
+      {"id": "next", "prompt": "Implement the next stage described in this node."}
+    ]
+  },
+  "timeout_seconds": 3600
+}

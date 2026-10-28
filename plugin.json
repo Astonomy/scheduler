@@ -1,0 +1,6 @@
+{
+  "name": "reqflow-scheduler",
+  "version": "0.2.0",
+  "description": "Schedule Codex task trees by sleep hours and live account quota.",
+  "skills": "./skills/"
+}
