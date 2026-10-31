@@ -74,7 +74,7 @@ def main(argv=None):
                 print(render_tree(task, result), flush=True)
                 if not args.watch:
                     return 0
-                time.sleep(args.interval_seconds)
+                time.sleep(min(args.interval_seconds, 0.1) if sys.stdout.isatty() else args.interval_seconds)
                 continue
             print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
             if args.action != "watch" or result.get("status") in {"completed", "interrupted", "running", "stopped"}:

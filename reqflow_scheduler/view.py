@@ -1,7 +1,10 @@
-"""Read-only terminal task tree rendering, without terminal dependencies."""
+"""Read-only terminal task tree rendering."""
+import time
 
 
 def render_tree(task, state):
+    spinner = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[int(time.monotonic() * 10) % 10]
+
     def line(value):
         return " ".join(str(value).split())
 
@@ -13,10 +16,9 @@ def render_tree(task, state):
     lines.append("")
 
     def visit(node, prefix="", branch="", following=""):
-        checkpoint = state.get("nodes", {}).get(node["id"], {})
-        current = ">" if state.get("current_node") == node["id"] else " "
-        lines.append(f"{prefix}{branch}{current} [{checkpoint.get('status', 'queued')}] "
-                     f"{node['id']} (attempts={checkpoint.get('attempts', 0)}) {line(node['prompt'])}")
+        status = state.get("nodes", {}).get(node["id"], {}).get("status", "queued")
+        marker = "✓" if status == "completed" else spinner if status == "running" else "-"
+        lines.append(f"{prefix}{branch}{node['id']} {marker}")
         children = node.get("children", [])
         for index, child in enumerate(children):
             last = index == len(children) - 1

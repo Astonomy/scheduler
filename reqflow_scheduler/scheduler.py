@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+import threading
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -43,21 +45,63 @@ def load_task(path):
         quota_adapter.timestamp(task["not_before"])
     if task.get("schedule_policy", "windowed") not in {"windowed", "continuous"}:
         raise ValueError("schedule_policy must be windowed or continuous")
+    if not isinstance(task.get("allow_append", False), bool):
+        raise ValueError("allow_append must be a boolean")
     return task
 
 
 def nodes(node):
-    if not isinstance(node, dict) or not isinstance(node.get("children", []), list):
-        raise ValueError("tree nodes must be objects with a children array")
-    yield node
-    for child in node.get("children", []):
-        yield from nodes(child)
+    for level in levels(node):
+        yield from level
+
+
+def levels(root):
+    level = [root]
+    while level:
+        following = []
+        for node in level:
+            if not isinstance(node, dict) or not isinstance(node.get("children", []), list):
+                raise ValueError("tree nodes must be objects with a children array")
+            following.extend(node.get("children", []))
+        yield level
+        level = following
 
 
 def fingerprint(task):
     # Only execution content matters; schedule_policy is a mutable dispatch setting.
     content = {key: task.get(key) for key in ("workspace", "tree", "codex", "timeout_seconds")}
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+
+
+def validate_extension(task, state):
+    """Allow opted-in completed trees to grow only below their deepest level."""
+    previous = state.get("execution_task")
+    if not task.get("allow_append") or not previous or not previous.get("allow_append"):
+        raise ValueError("task tree changed after dispatch; use a new task id")
+    if state.get("status") != "completed":
+        raise ValueError("finish the current tree before appending levels")
+    for key in ("workspace", "codex", "timeout_seconds"):
+        if task.get(key) != previous.get(key):
+            raise ValueError(f"cannot change dispatched execution setting: {key}")
+    old_levels, new_levels = list(levels(previous["tree"])), list(levels(task["tree"]))
+    if len(new_levels) <= len(old_levels):
+        raise ValueError("append must add a deeper level")
+    for depth, old_level in enumerate(old_levels):
+        if len(old_level) != len(new_levels[depth]):
+            raise ValueError("cannot add nodes to existing levels")
+        for old, new in zip(old_level, new_levels[depth]):
+            if state.get("nodes", {}).get(old["id"], {}).get("status") != "completed":
+                raise ValueError("finish every existing node before appending levels")
+            if {k: v for k, v in old.items() if k != "children"} != {k: v for k, v in new.items() if k != "children"}:
+                raise ValueError("cannot change dispatched node content or order")
+            if depth < len(old_levels) - 1 and [n["id"] for n in old.get("children", [])] != [n["id"] for n in new.get("children", [])]:
+                raise ValueError("cannot reparent nodes or extend shallower leaves")
+
+
+def execution_snapshot(task):
+    """Detach the accepted execution definition from mutable caller objects."""
+    return json.loads(json.dumps({key: task.get(key) for key in
+        ("workspace", "tree", "codex", "timeout_seconds", "allow_append")}))
 
 
 def paths(task, root):
@@ -79,10 +123,16 @@ def tick(task, root, now=None):
     with lock("task:" + str(state_path)), lock("workspace:" + os.path.normcase(task["workspace"])):
         state = read(state_path, {"id": task["id"], "status": "queued", "nodes": {}})
         if state.get("fingerprint") and state["fingerprint"] != fingerprint(task):
-            raise ValueError("task tree changed after dispatch; use a new task id")
+            validate_extension(task, state)
+            state.update(fingerprint=fingerprint(task), execution_task=execution_snapshot(task))
         if "nodes" not in state:
             raise ValueError("legacy execution state: use a new task id for the task tree")
-        save = lambda: write(state_path, state)
+        save_lock = threading.Lock()
+
+        def save():
+            with save_lock:
+                snapshot = {**state, "nodes": {key: value.copy() for key, value in state["nodes"].items()}}
+                write(state_path, snapshot)
 
         def wait(reason, until=None, status="waiting"):
             state.update(status=status, reason=reason, next_check_at=until, checked_at=clock().isoformat())
@@ -99,13 +149,17 @@ def tick(task, root, now=None):
             current_time = clock()
             if stop_path.exists():
                 return wait("stop requested", status="stopped")
-            node = next((n for n in nodes(task["tree"]) if state["nodes"].get(n["id"], {}).get("status") != "completed"), None)
-            if node is None:
+            batch = next(([n for n in level if state["nodes"].get(n["id"], {}).get("status") != "completed"]
+                          for level in levels(task["tree"])
+                          if any(state["nodes"].get(n["id"], {}).get("status") != "completed" for n in level)), [])
+            if not batch:
                 return wait("all nodes completed", status="completed")
-            state["current_node"] = node["id"]
-            ns = state["nodes"].setdefault(node["id"], dict(status="queued", attempts=0))
-            if ns["status"] in {"running", "interrupted", "stopped"}:
-                return wait(ns.get("reason") or "inspect interrupted node before recovery", status=ns["status"])
+            state["current_node"] = batch[0]["id"]
+            state["current_nodes"] = [node["id"] for node in batch]
+            for node in batch:
+                ns = state["nodes"].setdefault(node["id"], dict(status="queued", attempts=0))
+                if ns["status"] in {"running", "interrupted", "stopped"}:
+                    return wait(ns.get("reason") or "inspect interrupted node before recovery", status=ns["status"])
             if task.get("not_before") and current_time < quota_adapter.timestamp(task["not_before"]):
                 return wait("not due", task["not_before"])
             due = state.get("next_check_at")
@@ -129,32 +183,49 @@ def tick(task, root, now=None):
                     return wait("outside daytime reset window", window.isoformat())
                 if state.get("daytime_window") == quota["resets_at"]:
                     return wait("current node already submitted in this daytime window", quota["resets_at"])
-            ns.update(attempts=ns["attempts"] + 1, started_at=current_time.isoformat())
             state.update(status="running", fingerprint=fingerprint(task), next_check_at=None, reason=None)
+            if task.get("allow_append"):
+                state["execution_task"] = execution_snapshot(task)
             if not night:
                 state["daytime_window"] = quota["resets_at"]
-            run_task = {**task, "prompt": "继续" if ns.get("session_id") else node["prompt"]}
-            if not ns.get("session_id") and node.get("session_id"):
-                ns["session_id"] = node["session_id"]
+            for node in batch:
+                ns = state["nodes"][node["id"]]
+                ns.update(status="running", attempts=ns["attempts"] + 1, started_at=current_time.isoformat())
             save()
-            try:
-                dispatch.run(run_task, ns, lambda value: save(), folder / "runs" / node["id"] / str(ns["attempts"]), stop_path)
-            except (Exception, KeyboardInterrupt) as exc:
-                ns.update(status="interrupted", reason=str(exc) or type(exc).__name__, pid=None)
-                save()
-            if ns["status"] != "completed":
-                if ns.get("reason") not in {"timeout", "stopped"}:
+
+            def run_node(node):
+                ns = state["nodes"][node["id"]]
+                run_task = {**task, "prompt": "继续" if ns.get("session_id") else node["prompt"]}
+                if not ns.get("session_id") and node.get("session_id"):
+                    ns["session_id"] = node["session_id"]
+                try:
+                    dispatch.run(run_task, ns, lambda value: save(), folder / "runs" / node["id"] / str(ns["attempts"]), stop_path)
+                except (Exception, KeyboardInterrupt) as exc:
+                    ns.update(status="interrupted", reason=str(exc) or type(exc).__name__, pid=None)
+                    save()
+
+            with ThreadPoolExecutor(max_workers=len(batch)) as executor:
+                try:
+                    list(executor.map(run_node, batch))
+                except KeyboardInterrupt:
+                    stop_path.touch()
+                    raise
+            failed = [state["nodes"][node["id"]] for node in batch
+                      if state["nodes"][node["id"]]["status"] != "completed"]
+            if failed:
+                if all(ns.get("reason") not in {"timeout", "stopped"} for ns in failed):
                     try:
                         quota = quota_adapter.query(task, clock())
                         state["quota"] = quota
-                        if quota["blocked_until"] and ns.get("session_id"):
-                            ns.update(status="queued", reason="quota exhausted; resume this session after reset")
+                        if quota["blocked_until"] and all(ns.get("session_id") for ns in failed):
+                            for ns in failed:
+                                ns.update(status="queued", reason="quota exhausted; resume this session after reset")
                             return wait_quota(quota)
                     except (ValueError, OSError, KeyError, TypeError):
                         pass
-                return wait(ns.get("reason") or "node interrupted", status="interrupted")
+                return wait(failed[0].get("reason") or "node interrupted", status="interrupted")
             save()
-            # Re-evaluate time and quota before dispatching the next child/sibling.
+            # Each level is a barrier; recheck quota before starting the next.
 
 
 def recover(task, root, inspected=False):
@@ -169,10 +240,10 @@ def recover(task, root, inspected=False):
             raise ValueError("inspect child processes, then pass --inspected")
         if not state.get("current_node"):
             state["current_node"] = task["tree"]["id"]
-        ns = state["nodes"].setdefault(state["current_node"], dict(status="queued", attempts=0))
-        if ns["status"] != "completed":
-            if not ns.get("session_id") and ns.get("attempts", 0):
-                raise ValueError("no durable session id; inspect logs before creating a new task")
+        pending = [ns for ns in state["nodes"].values() if ns["status"] != "completed"]
+        if any(not ns.get("session_id") and ns.get("attempts", 0) for ns in pending):
+            raise ValueError("no durable session id; inspect logs before creating a new task")
+        for ns in pending:
             ns.update(status="queued", reason=None, pid=None)
         stop_path.unlink(missing_ok=True)
         state.update(status="queued", reason="operator inspected recovery", next_check_at=None)

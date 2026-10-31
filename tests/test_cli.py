@@ -83,8 +83,8 @@ class CliTests(unittest.TestCase):
         with patch("reqflow_scheduler.cli.tick") as tick, patch("reqflow_scheduler.quota_adapter.query") as quota:
             code, output = self.invoke("view", str(self.task), "--once", "--state-dir", str(folder.parent))
         self.assertEqual(code, 0)
-        self.assertIn("[completed] root", output)
-        self.assertIn("`-- > [queued] child", output)
+        self.assertIn("root ✓", output)
+        self.assertIn("`-- child -", output)
         tick.assert_not_called()
         quota.assert_not_called()
         self.assertEqual(json.loads((folder / "state.json").read_text()), state)
@@ -110,8 +110,8 @@ class CliTests(unittest.TestCase):
         ]), patch("reqflow_scheduler.cli.time.sleep", side_effect=[None, KeyboardInterrupt]) as sleep:
             code, output = self.invoke("view", str(self.task))
         self.assertEqual(code, 130)
-        self.assertIn("[running] root", output)
-        self.assertIn("[completed] root", output)
+        self.assertRegex(output, "root [⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]")
+        self.assertIn("root ✓", output)
         self.assertEqual(sleep.call_args_list[0].args, (2,))
 
     def test_view_resolves_task_id_from_definition_not_filename(self):
@@ -119,7 +119,7 @@ class CliTests(unittest.TestCase):
             code, output = self.invoke("view", "demo", "--once", "--state-dir", str(self.root / "state"))
         self.assertEqual(code, 0)
         self.assertIn("Task demo", output)
-        self.assertIn("[queued] child", output)
+        self.assertIn("child -", output)
 
     def test_view_id_lookup_errors_and_custom_directory(self):
         code, output = self.invoke("view", "demo", "--task-dir", str(self.root), "--once")

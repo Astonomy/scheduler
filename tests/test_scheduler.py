@@ -60,12 +60,123 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
             if session:
                 self.assertEqual(args[-3:], ["resume", session, "-"])
 
-    def test_sleep_depth_first_and_completed_not_redispatched(self):
+    def test_sleep_levels_and_completed_not_redispatched(self):
         result = tick(self.task, self.state_root, self.now)
         self.assertEqual(result['status'], 'completed')
-        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a', 'b', 'c'])
+        self.assertEqual([c['prompt'] for c in self.calls()][::3], ['root', 'b'])
+        self.assertCountEqual([c['prompt'] for c in self.calls()][1:3], ['a', 'c'])
         tick(self.task, self.state_root, self.now)
         self.assertEqual(len(self.calls()), 4)
+
+    def test_same_level_overlaps_and_next_level_waits(self):
+        barrier = threading.Barrier(2)
+        completed = set()
+        guard = threading.Lock()
+
+        def run(task, state, save, run_dir, stop):
+            name = task['prompt']
+            if name in {'a', 'c'}:
+                self.assertIn('root', completed)
+                barrier.wait(timeout=3)
+            if name == 'b':
+                self.assertTrue({'a', 'c'} <= completed)
+            with guard:
+                completed.add(name)
+            state.update(status='completed', session_id=name)
+            save(state)
+
+        with patch('reqflow_scheduler.dispatch.run', side_effect=run):
+            result = tick(self.task, self.state_root, self.now)
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(completed, {'root', 'a', 'b', 'c'})
+
+    def test_many_children_load_without_limit(self):
+        self.raw['tree']['children'] = [dict(id=f'n{i}', prompt='x') for i in range(1000)]
+        self.assertEqual(len(self.load()['tree']['children']), 1000)
+
+    def test_append_levels_preserves_completed_nodes_and_rechecks_quota(self):
+        self.raw['allow_append'] = True
+        task = self.load()
+        first = tick(task, self.state_root, self.now)
+        self.assertEqual(first['execution_task']['tree'], task['tree'])
+        self.raw['tree']['children'][0]['children'][0]['children'] = [
+            dict(id='next-a', prompt='next-a'), dict(id='next-b', prompt='next-b')]
+        task = self.load()
+        reset = self.now + timedelta(hours=1)
+        self.quota['blocked_until'] = reset.isoformat()
+        waiting = tick(task, self.state_root, self.now)
+        self.assertEqual(waiting['reason'], 'quota exhausted')
+        self.assertEqual(len(self.calls()), 4)
+        self.quota['blocked_until'] = None
+        result = tick(task, self.state_root, reset)
+        self.assertEqual(result['status'], 'completed')
+        self.assertCountEqual([c['prompt'] for c in self.calls()][4:], ['next-a', 'next-b'])
+        self.assertTrue(all(result['nodes'][key]['attempts'] == 1 for key in result['nodes']))
+        tick(task, self.state_root, reset)
+        self.assertEqual(len(self.calls()), 6)
+
+    def test_append_rejects_old_content_reordering_and_execution_changes(self):
+        self.raw['allow_append'] = True
+        tick(self.load(), self.state_root, self.now)
+        self.raw['tree']['children'][0]['children'][0]['children'] = [dict(id='next', prompt='next')]
+        baseline = json.loads(json.dumps(self.raw))
+        for change in ('prompt', 'order', 'codex', 'workspace', 'timeout'):
+            self.raw = json.loads(json.dumps(baseline))
+            if change == 'prompt':
+                self.raw['tree']['children'][0]['prompt'] = 'changed'
+            elif change == 'order':
+                self.raw['tree']['children'].reverse()
+            elif change == 'codex':
+                self.raw['codex'].append('--changed')
+            elif change == 'workspace':
+                self.raw['workspace'] = str(self.root)
+            else:
+                self.raw['timeout_seconds'] = 99
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                tick(self.load(), self.state_root, self.now)
+        self.assertEqual(len(self.calls()), 4)
+
+    def test_append_rejects_unfinished_tree_and_reparenting(self):
+        self.raw['allow_append'] = True
+        task = self.load()
+        tick(task, self.state_root, self.now)
+        _, state_path, _ = paths(task, self.state_root)
+        state = read(state_path)
+        state['status'] = 'interrupted'
+        state['nodes']['b']['status'] = 'interrupted'
+        write(state_path, state)
+        self.raw['tree']['children'][0]['children'][0]['children'] = [dict(id='next', prompt='next')]
+        with self.assertRaisesRegex(ValueError, 'finish the current tree'):
+            tick(self.load(), self.state_root, self.now)
+        with self.assertRaisesRegex(ValueError, 'task changed'):
+            recover(self.load(), self.state_root, True)
+        state['status'] = 'completed'
+        state['nodes']['b']['status'] = 'completed'
+        write(state_path, state)
+        # Preserve breadth-first node order, but move b from a to c: still rejected.
+        moved = self.raw['tree']['children'][0].pop('children')
+        self.raw['tree']['children'][1]['children'] = moved
+        with self.assertRaisesRegex(ValueError, 'reparent'):
+            tick(self.load(), self.state_root, self.now)
+        self.assertEqual(len(self.calls()), 4)
+
+    def test_append_requires_opt_in_before_initial_dispatch(self):
+        tick(self.task, self.state_root, self.now)
+        self.raw['allow_append'] = True
+        self.raw['tree']['children'][0]['children'][0]['children'] = [dict(id='next', prompt='next')]
+        with self.assertRaisesRegex(ValueError, 'new task id'):
+            tick(self.load(), self.state_root, self.now)
+
+    def test_recover_all_interrupted_siblings(self):
+        folder, state_path, _ = paths(self.task, self.state_root)
+        write(state_path, dict(status='interrupted', current_node='a', nodes={
+            'root': dict(status='completed', attempts=1),
+            'a': dict(status='interrupted', attempts=1, session_id='a-session'),
+            'c': dict(status='interrupted', attempts=1, session_id='c-session')}))
+        result = recover(self.task, self.state_root, True)
+        self.assertEqual(result['nodes']['a']['status'], 'queued')
+        self.assertEqual(result['nodes']['c']['status'], 'queued')
+        self.assertEqual(result['nodes']['root']['status'], 'completed')
 
     def test_no_requirement_or_git_checks_even_legacy_fields(self):
         self.raw.update(requirements='missing', readiness='missing', require_clean=True, quota_file='missing')
@@ -82,7 +193,8 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
         self.assertEqual(len(self.calls()), 1)
         self.quota['resets_at'] = (day + timedelta(hours=5, minutes=30)).isoformat()
         tick(self.task, self.state_root, day + timedelta(hours=5))
-        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a'])
+        self.assertEqual(self.calls()[0]['prompt'], 'root')
+        self.assertCountEqual([c['prompt'] for c in self.calls()][1:], ['a', 'c'])
 
     def test_daytime_outside_window_no_dispatch(self):
         day = self.now - timedelta(hours=10)
@@ -101,7 +213,8 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
         self.raw['schedule_policy'] = 'continuous'
         result = tick(self.load(), self.state_root, day)
         self.assertEqual(result['status'], 'completed')
-        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a', 'b', 'c'])
+        self.assertEqual([c['prompt'] for c in self.calls()][::3], ['root', 'b'])
+        self.assertCountEqual([c['prompt'] for c in self.calls()][1:3], ['a', 'c'])
 
     def test_continuous_keeps_quota_wait_and_resumes_exact_session(self):
         self.raw['schedule_policy'] = 'continuous'
@@ -144,7 +257,8 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
         # Custom night hours allow the remaining tree to continue at 16:00.
         task.update(night_start_hour=15, night_end_hour=17)
         self.assertEqual(tick(task, self.state_root, day)['status'], 'completed')
-        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a', 'b', 'c'])
+        self.assertEqual([c['prompt'] for c in self.calls()][::3], ['root', 'b'])
+        self.assertCountEqual([c['prompt'] for c in self.calls()][1:3], ['a', 'c'])
 
     def test_exhausted_waits_and_requeries_after_reset(self):
         reset = self.now + timedelta(hours=1)
