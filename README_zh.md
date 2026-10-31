@@ -130,6 +130,25 @@ python -m venv .venv
 
 ## 任务树 TUI 与 TOML 配置
 
+在任意目录使用命令，无需激活虚拟环境（全局安装一次即可）：
+
+```powershell
+uv tool install --editable D:/code/scheduler
+uv tool update-shell
+# 更新 PATH 后重新打开终端
+scheduler list
+scheduler view D:/code/scheduler/config/你的任务.json
+```
+
+`scheduler list` 合并列出安装目录 `config` 下的任务文件和用户目录
+`.reqflow-scheduler` 下的运行记录，显示状态、已完成/总节点数、当前节点及绝对路径，
+排除示例任务。其他目录使用 `--task-dir D:/tasks`、`--state-dir D:/scheduler-state` 指定。
+只有运行记录、找不到定义的任务也会列出；列表不会执行任务或查询额度。
+`view` 支持任务 ID 或文件路径，例如 `scheduler view reqcomp-cycle-20261031-retry-001`。
+任务 ID 按安装目录 `config` 中 JSON 的 `id` 字段查找，可用 `--task-dir D:/tasks` 改变查找目录；
+重复 ID 需使用明确的文件路径。只有状态记录、没有任务定义时无法重建任务树。
+若执行时自定义了 `--state-dir`，查看时也需传入相同目录。
+
 ```powershell
 # 激活虚拟环境后查看实时任务树，Ctrl+C 退出
 ./.venv/Scripts/Activate.ps1

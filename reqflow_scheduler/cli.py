@@ -10,6 +10,7 @@ from .config import load_config
 from .view import render_tree
 from .scheduler import load_task, paths, recover, tick
 from .state_store import Busy, read
+from .task_list import DEFAULT_TASK_DIR, render_tasks, resolve_task
 
 
 def main(argv=None):
@@ -17,6 +18,9 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="action", required=True)
     config_parser = sub.add_parser("config", help="validate and display effective TOML policy")
     config_parser.add_argument("--config", metavar="FILE")
+    list_parser = sub.add_parser("list", help="list task definitions and saved progress; never dispatch")
+    list_parser.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR))
+    list_parser.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
     for name in ("tick", "watch", "quota", "status", "stop", "recover", "view"):
         p = sub.add_parser(name)
         p.add_argument("task")
@@ -27,17 +31,22 @@ def main(argv=None):
         if name in {"watch", "view"}:
             p.add_argument("--interval-seconds", type=int)
         if name == "view":
+            p.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR), help="directory to search for task IDs")
             mode = p.add_mutually_exclusive_group()
             mode.add_argument("--watch", dest="watch", action="store_true", default=True,
                               help="refresh until Ctrl+C (default); never dispatch")
             mode.add_argument("--once", dest="watch", action="store_false", help="print one snapshot and exit")
     args = parser.parse_args(argv)
     try:
+        if args.action == "list":
+            print(render_tasks(args.task_dir, args.state_dir))
+            return 0
         config = load_config(args.config)
         if args.action == "config":
             print(json.dumps(config, ensure_ascii=False, indent=2))
             return 0
-        task = load_task(args.task)
+        task_path = resolve_task(args.task, args.task_dir) if args.action == "view" else args.task
+        task = load_task(task_path)
         if args.config:
             task.update({key: value for key, value in config.items() if key != "interval_seconds"})
         if args.action in {"watch", "view"}:

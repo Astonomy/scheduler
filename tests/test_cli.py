@@ -35,6 +35,39 @@ class CliTests(unittest.TestCase):
         self.assertEqual(json.loads(output)["schedule_policy"], "continuous")
         self.assertEqual(load_config()["reset_lead_minutes"], 30)
 
+    def test_list_merges_definitions_and_checkpoints_without_dispatch(self):
+        folder = self.root / "state" / "demo"
+        folder.mkdir(parents=True)
+        (folder / "state.json").write_text(json.dumps(dict(status="running", current_node="child",
+            nodes={"root": {"status": "completed"}, "child": {"status": "running"}})))
+        orphan = folder.parent / "old-task"
+        orphan.mkdir()
+        (orphan / "state.json").write_text('{"status": "stopped"}')
+        with patch("reqflow_scheduler.cli.tick") as tick, patch("reqflow_scheduler.quota_adapter.query") as quota:
+            code, output = self.invoke("list", "--task-dir", str(self.root), "--state-dir", str(folder.parent))
+        self.assertEqual(code, 0)
+        self.assertIn("demo | running | 1/2 completed | current=child", output)
+        self.assertIn(str(self.task.resolve()), output)
+        self.assertIn("old-task | stopped", output)
+        tick.assert_not_called()
+        quota.assert_not_called()
+
+    def test_list_empty_is_read_only(self):
+        missing = self.root / "missing"
+        code, output = self.invoke("list", "--task-dir", str(missing), "--state-dir", str(missing))
+        self.assertEqual(code, 0)
+        self.assertIn("No tasks found", output)
+        self.assertFalse(missing.exists())
+
+    def test_list_queued_and_invalid_files(self):
+        (self.root / "broken.json").write_text("{")
+        (self.root / "task.example.json").write_text(self.task.read_text())
+        code, output = self.invoke("list", "--task-dir", str(self.root), "--state-dir", str(self.root / "state"))
+        self.assertEqual(code, 0)
+        self.assertIn("demo | queued | 0/2 completed", output)
+        self.assertIn("Skipping", output)
+        self.assertEqual(output.count("demo |"), 1)
+
     def test_invalid_configs(self):
         for text in ('[scheduler]\ninterval_seconds = 0', '[scheduler]\nnight_start_hour = true',
                      '[scheduler]\nunknown = 1', '[other]\nx = 1', '[scheduler]\nschedule_policy = []',
@@ -80,6 +113,28 @@ class CliTests(unittest.TestCase):
         self.assertIn("[running] root", output)
         self.assertIn("[completed] root", output)
         self.assertEqual(sleep.call_args_list[0].args, (2,))
+
+    def test_view_resolves_task_id_from_definition_not_filename(self):
+        with patch("reqflow_scheduler.cli.DEFAULT_TASK_DIR", self.root):
+            code, output = self.invoke("view", "demo", "--once", "--state-dir", str(self.root / "state"))
+        self.assertEqual(code, 0)
+        self.assertIn("Task demo", output)
+        self.assertIn("[queued] child", output)
+
+    def test_view_id_lookup_errors_and_custom_directory(self):
+        code, output = self.invoke("view", "demo", "--task-dir", str(self.root), "--once")
+        self.assertEqual(code, 0)
+        self.assertIn("Task demo", output)
+        code, output = self.invoke("view", "missing", "--task-dir", str(self.root), "--once")
+        self.assertEqual(code, 1)
+        self.assertIn("Task ID not found", output)
+        code, output = self.invoke("view", str(self.root / "missing.json"), "--once")
+        self.assertEqual(code, 1)
+        self.assertIn("Task file not found", output)
+        (self.root / "duplicate.json").write_text(self.task.read_text())
+        code, output = self.invoke("view", "demo", "--task-dir", str(self.root), "--once")
+        self.assertEqual(code, 1)
+        self.assertIn("Multiple definitions", output)
 
     def test_cross_midnight(self):
         policy = dict(night_start_hour=23, night_end_hour=6)

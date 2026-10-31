@@ -105,6 +105,32 @@ stop handling and exact-session recovery still apply.
 
 ## Operations
 
+### Run from any directory
+
+Install the CLI as a user tool (no virtual environment activation needed):
+
+```powershell
+uv tool install --editable D:/code/scheduler
+uv tool update-shell
+# Open a new terminal after updating PATH.
+scheduler list
+scheduler view D:/code/scheduler/config/task.json
+```
+
+`list` combines task JSON files in this installation's `config` directory with
+checkpoints in `~/.reqflow-scheduler`, showing status, completed/total nodes,
+current node and absolute file paths. Example definitions are excluded.
+Use `scheduler list --task-dir D:/tasks --state-dir D:/scheduler-state` for
+custom locations. Tasks stored elsewhere require `--task-dir`; checkpoints
+without a matching definition still appear. The command never dispatches work.
+`view` accepts either a task file path or a task ID, for example
+`scheduler view reqcomp-cycle-20261031-retry-001`. IDs are matched against the
+`id` field of JSON definitions in the installation's `config` directory;
+use `--task-dir D:/tasks` to search elsewhere. Duplicate IDs require an explicit
+file path. Checkpoints alone cannot reconstruct a task tree.
+Use an absolute task file path with `view` to open definitions outside that directory;
+pass the same `--state-dir` used during execution if it was customized.
+
 ### Task tree TUI and TOML policy
 
 ```powershell
