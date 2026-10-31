@@ -48,7 +48,7 @@ class CliTests(unittest.TestCase):
         state = dict(status="waiting", current_node="child", nodes={"root": dict(status="completed", attempts=1)})
         (folder / "state.json").write_text(json.dumps(state))
         with patch("reqflow_scheduler.cli.tick") as tick, patch("reqflow_scheduler.quota_adapter.query") as quota:
-            code, output = self.invoke("view", str(self.task), "--state-dir", str(folder.parent))
+            code, output = self.invoke("view", str(self.task), "--once", "--state-dir", str(folder.parent))
         self.assertEqual(code, 0)
         self.assertIn("[completed] root", output)
         self.assertIn("`-- > [queued] child", output)
@@ -69,6 +69,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 130)
         sleep.assert_called_once_with(3)
         self.assertFalse((self.root / "state").exists())
+
+    def test_view_refreshes_checkpoint_by_default(self):
+        with patch("reqflow_scheduler.cli.read", side_effect=[
+            {"status": "running", "nodes": {"root": {"status": "running"}}},
+            {"status": "completed", "nodes": {"root": {"status": "completed"}}},
+        ]), patch("reqflow_scheduler.cli.time.sleep", side_effect=[None, KeyboardInterrupt]) as sleep:
+            code, output = self.invoke("view", str(self.task))
+        self.assertEqual(code, 130)
+        self.assertIn("[running] root", output)
+        self.assertIn("[completed] root", output)
+        self.assertEqual(sleep.call_args_list[0].args, (2,))
 
     def test_cross_midnight(self):
         policy = dict(night_start_hour=23, night_end_hour=6)

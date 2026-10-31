@@ -27,7 +27,8 @@ def executable(task):
 
 
 def command(task, session=None):
-    args = [*executable(task), "exec", "--json", "--sandbox", "workspace-write", "--skip-git-repo-check"]
+    args = [*executable(task), "exec", "--json", "--dangerously-bypass-approvals-and-sandbox",
+            "--skip-git-repo-check"]
     if session:
         args += ["resume", session, "-"]
     else:

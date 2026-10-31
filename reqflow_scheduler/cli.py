@@ -27,7 +27,10 @@ def main(argv=None):
         if name in {"watch", "view"}:
             p.add_argument("--interval-seconds", type=int)
         if name == "view":
-            p.add_argument("--watch", action="store_true", help="refresh until Ctrl+C; never dispatch")
+            mode = p.add_mutually_exclusive_group()
+            mode.add_argument("--watch", dest="watch", action="store_true", default=True,
+                              help="refresh until Ctrl+C (default); never dispatch")
+            mode.add_argument("--once", dest="watch", action="store_false", help="print one snapshot and exit")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
@@ -38,7 +41,8 @@ def main(argv=None):
         if args.config:
             task.update({key: value for key, value in config.items() if key != "interval_seconds"})
         if args.action in {"watch", "view"}:
-            args.interval_seconds = args.interval_seconds if args.interval_seconds is not None else config["interval_seconds"]
+            default_interval = 2 if args.action == "view" and not args.config else config["interval_seconds"]
+            args.interval_seconds = args.interval_seconds if args.interval_seconds is not None else default_interval
         folder, state_path, stop_path = paths(task, args.state_dir)
         if args.action in {"watch", "view"} and args.interval_seconds < 1:
             raise ValueError("interval must be positive")

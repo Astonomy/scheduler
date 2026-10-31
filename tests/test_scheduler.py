@@ -9,7 +9,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from reqflow_scheduler import quota_adapter
+from reqflow_scheduler import dispatch, quota_adapter
 from reqflow_scheduler.scheduler import load_task, paths, recover, sleeping, tick
 from reqflow_scheduler.state_store import Busy, lock, read, write
 
@@ -51,6 +51,14 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
     def calls(self):
         p = self.workspace / 'calls.jsonl'
         return [json.loads(s) for s in p.read_text(encoding='utf8').splitlines()] if p.exists() else []
+
+    def test_new_and_resumed_dispatch_have_full_access(self):
+        for session in (None, "session-123"):
+            args = dispatch.command(self.task, session)
+            self.assertIn("--dangerously-bypass-approvals-and-sandbox", args)
+            self.assertNotIn("--sandbox", args)
+            if session:
+                self.assertEqual(args[-3:], ["resume", session, "-"])
 
     def test_sleep_depth_first_and_completed_not_redispatched(self):
         result = tick(self.task, self.state_root, self.now)

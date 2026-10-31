@@ -45,6 +45,9 @@ Quota is read through Codex app-server's `account/rateLimits/read` without start
 
 Requirements: **Python 3.11+, Git, and an installed, authenticated Codex CLI**. Examples use Windows PowerShell.
 
+Child Codex sessions run with full access, without sandboxing or approval prompts,
+including resumed sessions. They inherit the scheduler process's OS permissions and credentials.
+
 ```powershell
 git clone https://github.com/Astonomy/scheduler.git
 cd scheduler
@@ -105,9 +108,11 @@ stop handling and exact-session recovery still apply.
 ### Task tree TUI and TOML policy
 
 ```powershell
-# Read-only tree; add --watch for terminal refresh (Ctrl+C exits).
-./.venv/Scripts/python.exe -m reqflow_scheduler view config/task.json
-./.venv/Scripts/python.exe -m reqflow_scheduler view config/task.json --watch --interval-seconds 2
+# Live read-only tree, refreshed every 2 seconds (Ctrl+C exits).
+./.venv/Scripts/Activate.ps1
+scheduler view config/task.json
+scheduler view config/task.json --once
+scheduler view config/task.json --interval-seconds 5
 
 # Validate/display policy, then apply it explicitly to execution.
 ./.venv/Scripts/python.exe -m reqflow_scheduler config --config config/scheduler.example.toml
@@ -116,7 +121,11 @@ stop handling and exact-session recovery still apply.
 
 `view` displays hierarchy, node status, current node (`>`), attempts, prompts and
 next check time. It reads checkpoints without dispatching or querying quota.
-`--watch` refreshes until Ctrl+C; redirected output emits successive snapshots.
+Refresh is enabled by default; `--watch` remains supported and `--once` prints a
+single snapshot. Redirected output emits successive snapshots. With an explicit
+`--config`, the configured interval applies; `--interval-seconds` takes precedence.
+The `scheduler` command is installed by `pip install -e .`; the existing
+`reqflow-scheduler` and `python -m reqflow_scheduler` entrypoints also work.
 
 [Example TOML](config/scheduler.example.toml) uses a `[scheduler]` table:
 `schedule_policy` (`windowed` or `continuous`), `night_start_hour` and
