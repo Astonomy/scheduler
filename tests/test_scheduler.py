@@ -86,6 +86,35 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
         tick(self.task, self.state_root, day + timedelta(seconds=30))
         self.assertEqual(self.query.call_count, before)
 
+    def test_continuous_overrides_daytime_wait_without_changing_checkpoint(self):
+        day = self.now - timedelta(hours=10)
+        self.quota['resets_at'] = (day + timedelta(hours=2)).isoformat()
+        self.assertEqual(tick(self.task, self.state_root, day)['status'], 'waiting')
+        self.raw['schedule_policy'] = 'continuous'
+        result = tick(self.load(), self.state_root, day)
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a', 'b', 'c'])
+
+    def test_continuous_keeps_quota_wait_and_resumes_exact_session(self):
+        self.raw['schedule_policy'] = 'continuous'
+        task = self.load()
+        day = self.now - timedelta(hours=10)
+        folder, state_path, _ = paths(task, self.state_root)
+        write(state_path, dict(id='test', status='waiting', current_node='root', nodes={
+            'root': dict(status='queued', attempts=1, session_id='exact-session')}))
+        self.quota['blocked_until'] = (day + timedelta(hours=1)).isoformat()
+        result = tick(task, self.state_root, day)
+        self.assertEqual(result['reason'], 'quota exhausted')
+        self.assertEqual(self.calls(), [])
+        queries = self.query.call_count
+        tick(task, self.state_root, day + timedelta(minutes=1))
+        self.assertEqual(self.query.call_count, queries)
+        self.quota['blocked_until'] = None
+        result = tick(task, self.state_root, day + timedelta(hours=1))
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(self.calls()[0]['prompt'], '继续')
+        self.assertIn('exact-session', self.calls()[0]['args'])
+
     def test_sleep_overrides_daytime_delay(self):
         day = self.now - timedelta(hours=2)  # midnight
         self.quota['resets_at'] = (day + timedelta(hours=5)).isoformat()
@@ -97,6 +126,17 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
         for hour, minute, expected in [(0,59,False), (1,0,True), (8,59,True), (9,0,False), (23,0,False)]:
             local = datetime(2026,10,28,hour,minute,tzinfo=timezone(timedelta(hours=8)))
             self.assertEqual(sleeping(local), expected)
+
+    def test_configured_reset_window_and_night_hours(self):
+        day = self.now - timedelta(hours=10)
+        self.quota['resets_at'] = (day + timedelta(minutes=45)).isoformat()
+        task = {**self.task, 'reset_lead_minutes': 60}
+        tick(task, self.state_root, day)
+        self.assertEqual([c['prompt'] for c in self.calls()], ['root'])
+        # Custom night hours allow the remaining tree to continue at 16:00.
+        task.update(night_start_hour=15, night_end_hour=17)
+        self.assertEqual(tick(task, self.state_root, day)['status'], 'completed')
+        self.assertEqual([c['prompt'] for c in self.calls()], ['root', 'a', 'b', 'c'])
 
     def test_exhausted_waits_and_requeries_after_reset(self):
         reset = self.now + timedelta(hours=1)

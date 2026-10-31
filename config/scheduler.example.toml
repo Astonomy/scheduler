@@ -1,0 +1,8 @@
+# Pass explicitly with --config config/scheduler.example.toml.
+# This table overrides task scheduling settings, without changing checkpoints.
+[scheduler]
+schedule_policy = "windowed" # "continuous" dispatches at any hour, quota permitting
+night_start_hour = 1        # Beijing time, inclusive; may cross midnight
+night_end_hour = 9          # exclusive
+reset_lead_minutes = 30     # daytime dispatch within this many minutes before reset
+interval_seconds = 60      # watch/view --watch polling; CLI interval takes precedence

@@ -94,7 +94,38 @@ All times use **Beijing time (UTC+8)**.
 
 Weekly limits may delay recovery beyond five hours.
 
+Set `"schedule_policy": "continuous"` in a task to dispatch at any hour and
+continue through its tree while real quota permits. The default is `"windowed"`
+and retains the daytime/nighttime rules above. This operational setting can be
+changed without replacing execution checkpoints; quota reset waits, `not_before`,
+stop handling and exact-session recovery still apply.
+
 ## Operations
+
+### Task tree TUI and TOML policy
+
+```powershell
+# Read-only tree; add --watch for terminal refresh (Ctrl+C exits).
+./.venv/Scripts/python.exe -m reqflow_scheduler view config/task.json
+./.venv/Scripts/python.exe -m reqflow_scheduler view config/task.json --watch --interval-seconds 2
+
+# Validate/display policy, then apply it explicitly to execution.
+./.venv/Scripts/python.exe -m reqflow_scheduler config --config config/scheduler.example.toml
+./.venv/Scripts/python.exe -m reqflow_scheduler watch config/task.json --config config/scheduler.example.toml
+```
+
+`view` displays hierarchy, node status, current node (`>`), attempts, prompts and
+next check time. It reads checkpoints without dispatching or querying quota.
+`--watch` refreshes until Ctrl+C; redirected output emits successive snapshots.
+
+[Example TOML](config/scheduler.example.toml) uses a `[scheduler]` table:
+`schedule_policy` (`windowed` or `continuous`), `night_start_hour` and
+`night_end_hour` (Beijing hours 0–23, start inclusive/end exclusive, overnight
+ranges allowed), `reset_lead_minutes` (1–300), and `interval_seconds` (1–86400).
+Explicit TOML settings, including defaults for omitted keys, override task policy;
+CLI `--interval-seconds` overrides the TOML polling interval. No configuration file
+is auto-loaded. Without `--config`, existing behavior remains. `config` alone
+prints defaults. Configuration never bypasses quota or recovery checks.
 
 ```powershell
 # Perform one scheduling pass; nighttime execution may advance multiple nodes.

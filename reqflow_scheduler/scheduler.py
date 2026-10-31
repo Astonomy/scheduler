@@ -41,6 +41,8 @@ def load_task(path):
         raise ValueError("codex must be a nonempty argv array")
     if task.get("not_before"):
         quota_adapter.timestamp(task["not_before"])
+    if task.get("schedule_policy", "windowed") not in {"windowed", "continuous"}:
+        raise ValueError("schedule_policy must be windowed or continuous")
     return task
 
 
@@ -53,7 +55,7 @@ def nodes(node):
 
 
 def fingerprint(task):
-    # Only execution content matters; legacy readiness fields are ignored.
+    # Only execution content matters; schedule_policy is a mutable dispatch setting.
     content = {key: task.get(key) for key in ("workspace", "tree", "codex", "timeout_seconds")}
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
@@ -63,8 +65,11 @@ def paths(task, root):
     return folder, folder / "state.json", folder / "stop"
 
 
-def sleeping(now):
-    return 1 <= now.astimezone(DEFAULT_TIMEZONE).hour < 9
+def sleeping(now, task=None):
+    task = task or {}
+    start, end = task.get("night_start_hour", 1), task.get("night_end_hour", 9)
+    hour = now.astimezone(DEFAULT_TIMEZONE).hour
+    return start <= hour < end if start < end else hour >= start or hour < end
 
 
 def tick(task, root, now=None):
@@ -106,7 +111,7 @@ def tick(task, root, now=None):
             due = state.get("next_check_at")
             if due and current_time < quota_adapter.timestamp(due):
                 # Entering sleep overrides a daytime window delay, never a quota reset delay.
-                if not sleeping(current_time) or state.get("reason") not in {"outside daytime reset window", "current node already submitted in this daytime window"}:
+                if not (sleeping(current_time, task) or task.get("schedule_policy") == "continuous") or state.get("reason") not in {"outside daytime reset window", "current node already submitted in this daytime window"}:
                     return state
             try:
                 quota = quota_adapter.query(task, current_time)
@@ -117,9 +122,9 @@ def tick(task, root, now=None):
                 return wait_quota(quota)
             state.pop("quota_wait_until", None)
             reset = quota_adapter.timestamp(quota["resets_at"])
-            night = sleeping(current_time)
+            night = sleeping(current_time, task) or task.get("schedule_policy") == "continuous"
             if not night:
-                window = reset - timedelta(minutes=30)
+                window = reset - timedelta(minutes=task.get("reset_lead_minutes", 30))
                 if current_time < window:
                     return wait("outside daytime reset window", window.isoformat())
                 if state.get("daytime_window") == quota["resets_at"]:

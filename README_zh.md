@@ -126,3 +126,26 @@ python -m venv .venv
 ```
 
 测试使用模拟额度和执行器，不消耗真实 Codex 额度。
+
+
+## 任务树 TUI 与 TOML 配置
+
+```powershell
+# 查看任务树；添加 --watch 持续刷新，Ctrl+C 退出
+./.venv/Scripts/python.exe -m reqflow_scheduler view config/task.json --watch --interval-seconds 2
+# 校验并输出配置（省略 --config 则输出默认值）
+./.venv/Scripts/python.exe -m reqflow_scheduler config --config config/scheduler.example.toml
+# 使用配置执行调度
+./.venv/Scripts/python.exe -m reqflow_scheduler watch config/task.json --config config/scheduler.example.toml
+```
+
+`view` 展示节点层级、状态、当前节点（`>`）、尝试次数、提示词及下次检查时间，只读取检查点，不执行任务或查询额度。
+
+示例文件：[scheduler.example.toml](config/scheduler.example.toml)。`[scheduler]` 支持：
+
+- `schedule_policy`：`windowed`（默认）或 `continuous`（全天按额度连续执行）。
+- `night_start_hour` / `night_end_hour`：北京时间 0–23，起点包含、终点不包含，允许跨午夜，不能相同。默认 1–9。
+- `reset_lead_minutes`：日间重置前可提交窗口，1–300 分钟，默认 30。
+- `interval_seconds`：`watch` 和 `view --watch` 的轮询间隔，1–86400 秒，默认 60。
+
+仅显式传入 `--config` 时加载 TOML，配置及其缺省值覆盖任务中的策略；命令行 `--interval-seconds` 优先于 TOML。未传配置保持原有行为。配置不会跳过额度和恢复检查。skill 支持 `view`、`config` 及这些调用选项。

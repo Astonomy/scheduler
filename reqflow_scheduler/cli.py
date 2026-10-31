@@ -6,6 +6,8 @@ import sys
 import time
 
 from . import quota_adapter
+from .config import load_config
+from .view import render_tree
 from .scheduler import load_task, paths, recover, tick
 from .state_store import Busy, read
 
@@ -13,19 +15,32 @@ from .state_store import Busy, read
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Schedule Codex task trees using account quota")
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("tick", "watch", "quota", "status", "stop", "recover"):
+    config_parser = sub.add_parser("config", help="validate and display effective TOML policy")
+    config_parser.add_argument("--config", metavar="FILE")
+    for name in ("tick", "watch", "quota", "status", "stop", "recover", "view"):
         p = sub.add_parser(name)
         p.add_argument("task")
+        p.add_argument("--config", metavar="FILE")
         p.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
         if name == "recover":
             p.add_argument("--inspected", action="store_true")
-        if name == "watch":
-            p.add_argument("--interval-seconds", type=int, default=60)
+        if name in {"watch", "view"}:
+            p.add_argument("--interval-seconds", type=int)
+        if name == "view":
+            p.add_argument("--watch", action="store_true", help="refresh until Ctrl+C; never dispatch")
     args = parser.parse_args(argv)
     try:
+        config = load_config(args.config)
+        if args.action == "config":
+            print(json.dumps(config, ensure_ascii=False, indent=2))
+            return 0
         task = load_task(args.task)
+        if args.config:
+            task.update({key: value for key, value in config.items() if key != "interval_seconds"})
+        if args.action in {"watch", "view"}:
+            args.interval_seconds = args.interval_seconds if args.interval_seconds is not None else config["interval_seconds"]
         folder, state_path, stop_path = paths(task, args.state_dir)
-        if args.action == "watch" and args.interval_seconds < 1:
+        if args.action in {"watch", "view"} and args.interval_seconds < 1:
             raise ValueError("interval must be positive")
         while True:
             if args.action in {"tick", "watch"}:
@@ -40,6 +55,14 @@ def main(argv=None):
                 result = {"id": task["id"], "stop_requested": True}
             else:
                 result = read(state_path, {"id": task["id"], "status": "queued"})
+            if args.action == "view":
+                if args.watch and sys.stdout.isatty():
+                    print("\033[2J\033[H", end="")
+                print(render_tree(task, result), flush=True)
+                if not args.watch:
+                    return 0
+                time.sleep(args.interval_seconds)
+                continue
             print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
             if args.action != "watch" or result.get("status") in {"completed", "interrupted", "running", "stopped"}:
                 return 0 if result.get("status") not in {"blocked", "interrupted", "running"} else 2
