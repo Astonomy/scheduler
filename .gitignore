@@ -1,5 +1,14 @@
 __pycache__/
+*.py[cod]
 *.egg-info/
 .venv/
 .state/
-config/quota.json
+
+# Local execution state, logs and process records
+/runtime/
+
+# Local task and policy files; keep distributable examples
+/config/*.json
+/config/*.toml
+!/config/*.example.json
+!/config/*.example.toml
