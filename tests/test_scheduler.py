@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from contextlib import redirect_stdout
+import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -10,7 +13,8 @@ import unittest
 from unittest.mock import patch
 
 from reqflow_scheduler import dispatch, quota_adapter
-from reqflow_scheduler.scheduler import load_task, paths, recover, sleeping, tick
+from reqflow_scheduler.cli import main
+from reqflow_scheduler.scheduler import continue_task, load_task, paths, process_running, recover, sleeping, tick
 from reqflow_scheduler.state_store import Busy, lock, read, write
 
 
@@ -60,8 +64,100 @@ print(json.dumps({"type":"turn.completed"}), flush=True)
             if session:
                 self.assertEqual(args[-3:], ["resume", session, "-"])
 
-    def test_sleep_levels_and_completed_not_redispatched(self):
+    def test_continue_resumes_siblings_without_repeating_completed_nodes(self):
+        _, state_path, stop_path = paths(self.task, self.state_root)
+        write(state_path, dict(status='interrupted', nodes={
+            'root': dict(status='completed', attempts=1),
+            'a': dict(status='interrupted', attempts=1, session_id='exact-a'),
+            'c': dict(status='completed', attempts=1)}))
+        stop_path.touch()
+        continue_task(self.task, self.state_root)
         result = tick(self.task, self.state_root, self.now)
+        self.assertEqual(result['status'], 'completed')
+        self.assertFalse(stop_path.exists())
+        self.assertEqual([c['prompt'] for c in self.calls()], ['继续', 'b'])
+        self.assertIn('exact-a', self.calls()[0]['args'])
+
+    def test_continue_checks_processes_and_missing_sessions_without_mutation(self):
+        _, state_path, _ = paths(self.task, self.state_root)
+        for node in (
+            dict(status='running', attempts=1, session_id='exact', pid=os.getpid()),
+            dict(status='running', attempts=1, session_id='exact'),
+            dict(status='interrupted', attempts=1),
+        ):
+            state = dict(status='interrupted', nodes={'root': node})
+            write(state_path, state)
+            with self.assertRaises(ValueError):
+                continue_task(self.task, self.state_root)
+            self.assertEqual(read(state_path), state)
+        self.assertTrue(process_running(os.getpid()))
+
+    def test_continue_stale_pid_and_waiting_checkpoint(self):
+        _, state_path, _ = paths(self.task, self.state_root)
+        write(state_path, dict(status='running', nodes={
+            'root': dict(status='running', attempts=1, session_id='exact', pid=12345)}))
+        with patch('reqflow_scheduler.scheduler.process_running', return_value=False):
+            result = continue_task(self.task, self.state_root)
+        self.assertEqual(result['nodes']['root']['status'], 'queued')
+        state = dict(status='waiting', next_check_at=self.quota['resets_at'],
+                     reason='quota exhausted', nodes=result['nodes'])
+        write(state_path, state)
+        self.assertEqual(continue_task(self.task, self.state_root), state)
+        self.assertEqual(read(state_path), state)
+
+    def test_continue_requires_checkpoint(self):
+        with self.assertRaisesRegex(ValueError, 'no task-tree checkpoint'):
+            continue_task(self.task, self.state_root)
+
+    def test_ctrl_c_saves_interrupted_task_status(self):
+        with patch('reqflow_scheduler.scheduler.ThreadPoolExecutor') as executor:
+            executor.return_value.__enter__.return_value.map.side_effect = KeyboardInterrupt
+            with self.assertRaises(KeyboardInterrupt):
+                tick(self.task, self.state_root, self.now)
+        _, state_path, stop_path = paths(self.task, self.state_root)
+        self.assertEqual(read(state_path)['status'], 'interrupted')
+        self.assertTrue(stop_path.exists())
+
+    def test_continue_background_survives_cli_return(self):
+        self.raw.update(tree=dict(id='root', prompt='slow'), schedule_policy='continuous')
+        task = self.load()
+        _, state_path, _ = paths(task, self.state_root)
+        write(state_path, dict(status='queued', nodes={}))
+        popen = subprocess.Popen
+        workers = []
+
+        def launch(command, **options):
+            # Only the isolated worker's quota adapter is simulated; dispatch is real.
+            script = ('import sys; from unittest.mock import patch; '
+                      'from reqflow_scheduler.cli import main; '
+                      f'quota = {self.quota!r}; '
+                      'mock = patch("reqflow_scheduler.quota_adapter.query", return_value=quota); '
+                      'mock.start(); sys.exit(main(sys.argv[1:]))')
+            worker = popen([sys.executable, '-c', script, *command[3:]], **options)
+            workers.append(worker)
+            return worker
+
+        output = io.StringIO()
+        try:
+            with patch('reqflow_scheduler.cli.subprocess.Popen', side_effect=launch), redirect_stdout(output):
+                code = main(['continue', str(self.task_file), '--state-dir', str(self.state_root)])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(output.getvalue())['running_nodes'], ['root'])
+            self.assertIsNone(workers[0].poll())
+            self.assertEqual(read(state_path)['status'], 'running')
+            workers[0].wait(timeout=15)
+            self.assertEqual(read(state_path)['status'], 'completed')
+        finally:
+            for worker in workers:
+                if worker.poll() is None:
+                    worker.wait(timeout=15)
+
+    def test_sleep_levels_and_completed_not_redispatched(self):
+        with patch('reqflow_scheduler.dispatch.subprocess.Popen', wraps=subprocess.Popen) as launch:
+            result = tick(self.task, self.state_root, self.now)
+        if os.name == 'nt':
+            self.assertTrue(all(call.kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
+                                for call in launch.call_args_list))
         self.assertEqual(result['status'], 'completed')
         self.assertEqual([c['prompt'] for c in self.calls()][::3], ['root', 'b'])
         self.assertCountEqual([c['prompt'] for c in self.calls()][1:3], ['a', 'c'])
@@ -402,7 +498,10 @@ assert request['method']=='account/rateLimits/read'
 print(json.dumps(dict(id=request['id'],result=dict(rateLimits=dict(limitId='codex')))),flush=True)
 sys.stdin.read()
 ''')
-            result=quota_adapter.fetch(dict(codex=[sys.executable,str(fake)]))
+            with patch('reqflow_scheduler.quota_adapter.subprocess.Popen', wraps=subprocess.Popen) as launch:
+                result=quota_adapter.fetch(dict(codex=[sys.executable,str(fake)]))
+            if os.name == 'nt':
+                self.assertTrue(launch.call_args.kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW)
             self.assertEqual(result['rateLimits']['limitId'],'codex')
 
 

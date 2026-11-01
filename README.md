@@ -133,6 +133,28 @@ pass the same `--state-dir` used during execution if it was customized.
 
 ### Task tree TUI and TOML policy
 
+Resume a saved task tree from a terminal:
+
+```powershell
+scheduler continue config/task.json
+scheduler continue my-project-001
+scheduler continue my-project-001 --task-dir D:/tasks --state-dir D:/scheduler-state
+```
+
+`continue` checks interrupted child processes, clears a saved stop request after
+recovery, and starts a detached background `watch` process. It returns after a
+node has launched and saved its PID, printing `running`, running node IDs and the
+scheduler PID. A quota/schedule wait reports its actual status instead. Monitor
+with `view`, stop with `stop TASK`, and read `continue.log` in the task state
+directory for background output. Completed
+nodes are skipped; unfinished dispatched nodes resume their exact Codex session
+with `继续`. Quota waits and scheduling policy still apply. It accepts `--config`
+and `--interval-seconds` with the same behavior as `watch`.
+An existing checkpoint is required; use `watch` for a new task. A still-running
+child, missing session ID, or changed dispatched content prevents recovery.
+If a crash left a running node without a saved PID, inspect child processes and
+use `recover TASK --inspected` before `continue`.
+
 ```powershell
 # Live read-only tree, refreshed every 2 seconds (Ctrl+C exits).
 ./.venv/Scripts/Activate.ps1

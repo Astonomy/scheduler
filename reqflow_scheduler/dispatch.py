@@ -40,7 +40,8 @@ def terminate(process):
     if process.poll() is not None:
         return
     if os.name == "nt":
-        subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False)
+        subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False,
+                       creationflags=subprocess.CREATE_NO_WINDOW)
     else:
         import signal
         os.killpg(process.pid, signal.SIGTERM)
@@ -64,6 +65,7 @@ def run(task, state, save, run_dir, stop_file):
     with (run_dir / "stderr.log").open("ab") as errors:
         process = subprocess.Popen(args, cwd=task["workspace"], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=errors,
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                                    start_new_session=os.name != "nt")
         state["pid"] = process.pid
         save(state)

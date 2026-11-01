@@ -116,7 +116,7 @@ def sleeping(now, task=None):
     return start <= hour < end if start < end else hour >= start or hour < end
 
 
-def tick(task, root, now=None):
+def tick(task, root, now=None, on_running=None):
     # Injected time is fixed for tests; real runs recheck time after each node.
     clock = (lambda: now) if now is not None else (lambda: datetime.now(timezone.utc))
     folder, state_path, stop_path = paths(task, root)
@@ -133,6 +133,11 @@ def tick(task, root, now=None):
             with save_lock:
                 snapshot = {**state, "nodes": {key: value.copy() for key, value in state["nodes"].items()}}
                 write(state_path, snapshot)
+                if on_running and snapshot.get("status") == "running":
+                    running = [key for key, node in snapshot["nodes"].items()
+                               if node.get("status") == "running" and node.get("pid")]
+                    if running:
+                        on_running(running)
 
         def wait(reason, until=None, status="waiting"):
             state.update(status=status, reason=reason, next_check_at=until, checked_at=clock().isoformat())
@@ -209,6 +214,8 @@ def tick(task, root, now=None):
                     list(executor.map(run_node, batch))
                 except KeyboardInterrupt:
                     stop_path.touch()
+                    state.update(status="interrupted", reason="scheduler interrupted by Ctrl+C", next_check_at=None)
+                    save()
                     raise
             failed = [state["nodes"][node["id"]] for node in batch
                       if state["nodes"][node["id"]]["status"] != "completed"]
@@ -228,24 +235,68 @@ def tick(task, root, now=None):
             # Each level is a barrier; recheck quota before starting the next.
 
 
-def recover(task, root, inspected=False):
+def process_running(pid):
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        handle = kernel.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE
+        if not handle:
+            if ctypes.get_last_error() == 87:  # ERROR_INVALID_PARAMETER: PID no longer exists
+                return False
+            raise OSError("cannot inspect child process " + str(pid))
+        try:
+            result = kernel.WaitForSingleObject(handle, 0)
+            if result not in {0, 258}:
+                raise OSError("cannot inspect child process " + str(pid))
+            return result == 258  # WAIT_TIMEOUT
+        finally:
+            kernel.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def continue_task(task, root):
+    """Prepare a saved checkpoint for polling, checking stale child processes."""
+    return recover(task, root, automatic=True)
+
+
+def recover(task, root, inspected=False, *, automatic=False):
     folder, state_path, stop_path = paths(task, root)
     with lock("task:" + str(state_path)), lock("workspace:" + os.path.normcase(task["workspace"])):
         state = read(state_path)
+        if automatic and (not state or "nodes" not in state):
+            raise ValueError("no task-tree checkpoint; start this task with watch first")
+        if automatic and state["status"] not in {"running", "interrupted", "stopped"}:
+            return state  # tick validates content and preserves quota/scheduling waits.
         if not state or state["status"] not in {"running", "interrupted", "stopped"}:
             raise ValueError("task has no interrupted run")
         if state.get("fingerprint") and state["fingerprint"] != fingerprint(task):
             raise ValueError("task changed after dispatch")
-        if not inspected:
+        if not inspected and not automatic:
             raise ValueError("inspect child processes, then pass --inspected")
         if not state.get("current_node"):
             state["current_node"] = task["tree"]["id"]
         pending = [ns for ns in state["nodes"].values() if ns["status"] != "completed"]
+        if automatic:
+            for ns in pending:
+                if ns.get("pid") and process_running(ns["pid"]):
+                    raise ValueError(f"child process {ns['pid']} is still running; wait for it to exit before continuing")
+                if ns.get("status") == "running" and not ns.get("pid"):
+                    raise ValueError("child launch has no durable PID; inspect processes, then use recover --inspected")
         if any(not ns.get("session_id") and ns.get("attempts", 0) for ns in pending):
             raise ValueError("no durable session id; inspect logs before creating a new task")
         for ns in pending:
             ns.update(status="queued", reason=None, pid=None)
         stop_path.unlink(missing_ok=True)
-        state.update(status="queued", reason="operator inspected recovery", next_check_at=None)
+        state.update(status="queued", reason="checkpoint continued" if automatic else "operator inspected recovery", next_check_at=None)
         write(state_path, state)
         return state

@@ -60,7 +60,14 @@ cd D:/code/scheduler
 .venv/Scripts/python.exe -m reqflow_scheduler stop config/task.json
 # 确认原进程已退出后，恢复精确会话
 .venv/Scripts/python.exe -m reqflow_scheduler recover config/task.json --inspected
+# 从已有检查点恢复并持续调度（也支持任务 ID，默认查找安装目录 config）
+scheduler continue config/task.json
+scheduler continue my-project-001 --task-dir D:/tasks
 ```
+
+`continue` 在后台续跑，确认节点启动并保存 PID 后输出运行节点并返回终端；等待额度或时间窗口时输出实际状态。后台日志写入任务状态目录的 `continue.log`，使用 `stop 任务文件` 停止。它自动检查保存的子进程 PID；原进程退出后恢复精确会话，跳过已完成节点，恢复后清除停止标记。
+它要求已有任务树检查点，支持与 `watch` 相同的 `--config`、`--interval-seconds`、`--state-dir`，保留额度等待与时间策略。
+原进程仍在运行、执行过的节点缺少会话 ID 时拒绝恢复；运行节点缺少 PID 时需先人工检查进程，再执行 `recover --inspected`。
 
 `watch` 在无人登录的后台运行需由操作系统服务或任务计划程序托管。`scripts/print-windows-task.ps1` 输出每分钟调用 `tick` 的任务 XML，可导入 Windows 任务计划程序；脚本本身不注册任务。只更新插件不会自动启动没有配置工作区和提示词的示例任务。
 

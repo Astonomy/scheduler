@@ -130,6 +130,21 @@ python -m venv .venv
 
 ## 任务树 TUI 与 TOML 配置
 
+终端断点续传：
+
+```powershell
+scheduler continue config/task.json
+scheduler continue 任务ID
+scheduler continue 任务ID --task-dir D:/tasks --state-dir D:/scheduler-state
+```
+
+`continue` 读取已有检查点，检查中断进程、恢复后清除停止标记，并在后台像 `watch` 一样持续轮询，直到完成或再次中断。
+确认节点已启动并保存 PID 后，命令输出 `running`、运行节点和后台调度 PID，然后返回终端；若等待额度或时间窗口则输出实际等待状态。用 `scheduler view 任务ID` 查看进度，`scheduler stop 任务文件` 停止；后台日志为状态目录内的 `continue.log`。
+已完成节点跳过；执行过的未完成节点在原 Codex 会话发送“继续”，保留同层并行和逐层执行顺序。
+额度等待和时间策略仍生效，支持 `--config`、`--interval-seconds`。
+新任务请使用 `watch`；没有检查点、原进程仍在运行、缺少会话 ID 或已派发内容被修改时会报错。
+若崩溃时运行节点尚未保存 PID，需检查子进程后执行 `recover 任务文件 --inspected`，再运行 `continue`。
+
 在任意目录使用命令，无需激活虚拟环境（全局安装一次即可）：
 
 ```powershell
@@ -161,6 +176,7 @@ scheduler view config/task.json --once
 ```
 
 `view` 展示全部节点及下次检查时间；节点后以 `✓` 表示完成、`-` 表示未完成、转圈动效表示执行中，不展示提示词和任务输出，只读取检查点，不执行任务或查询额度。
+只有已核实 PID 仍在运行的节点显示转圈；进程已退出则不转圈，总状态残留为 `running` 时显示 `interrupted`。缺少 PID 或无法检查进程时显示 `unknown`，不修改检查点。
 
 安装或更新后可直接运行 `scheduler view 任务文件.json`，默认每 2 秒刷新，Ctrl+C 退出。
 `--once` 只显示一次；`--watch` 仍兼容。显式传入 `--config` 时使用配置间隔，

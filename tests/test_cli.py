@@ -2,14 +2,17 @@ from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timedelta, timezone
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 
 from reqflow_scheduler.cli import main
 from reqflow_scheduler.config import load_config
 from reqflow_scheduler.scheduler import sleeping
+from reqflow_scheduler.view import render_tree
 
 
 class CliTests(unittest.TestCase):
@@ -95,6 +98,55 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(tick.call_args.args[0]["schedule_policy"], "continuous")
 
+    def test_continue_returns_after_background_running_acknowledgement(self):
+        with patch('reqflow_scheduler.cli.continue_task', return_value={'status': 'queued'}) as resume, patch(
+            'reqflow_scheduler.cli.subprocess.Popen'
+        ) as launch, patch('reqflow_scheduler.cli.read', return_value={'status': 'running', 'running_nodes': ['root']}):
+            (self.root / 'state' / 'demo').mkdir(parents=True)
+            launch.return_value.pid = 123
+            code, output = self.invoke('continue', 'demo', '--task-dir', str(self.root),
+                                  '--state-dir', str(self.root / 'state'), '--config', str(self.config),
+                                  '--interval-seconds', '3')
+        self.assertEqual(code, 0)
+        resume.assert_called_once()
+        self.assertEqual(json.loads(output)['running_nodes'], ['root'])
+        command = launch.call_args.args[0]
+        self.assertIn('watch', command)
+        self.assertIn(str(self.config.resolve()), command)
+        self.assertEqual(command[command.index('--interval-seconds') + 1], '3')
+        if os.name == 'nt':
+            flags = launch.call_args.kwargs['creationflags']
+            self.assertTrue(flags & subprocess.CREATE_NO_WINDOW)
+            self.assertFalse(flags & subprocess.DETACHED_PROCESS)
+
+    def test_background_watch_acknowledges_running_before_tick_returns(self):
+        ready = self.root / 'ready.json'
+
+        def run(task, root, on_running):
+            on_running(['root'])
+            self.assertEqual(json.loads(ready.read_text())['running_nodes'], ['root'])
+            return {'status': 'completed'}
+
+        with patch('reqflow_scheduler.cli.tick', side_effect=run):
+            code, _ = self.invoke('watch', str(self.task), '--background-ready', str(ready))
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(ready.read_text())['status'], 'running')
+
+    def test_background_watch_reports_waiting_without_claiming_running(self):
+        ready = self.root / 'ready.json'
+        with patch('reqflow_scheduler.cli.tick', return_value={'status': 'waiting', 'reason': 'quota exhausted'}), patch(
+            'reqflow_scheduler.cli.time.sleep', side_effect=KeyboardInterrupt
+        ):
+            self.invoke('watch', str(self.task), '--background-ready', str(ready))
+        self.assertEqual(json.loads(ready.read_text())['status'], 'waiting')
+
+    def test_continue_missing_checkpoint_does_not_dispatch(self):
+        with patch('reqflow_scheduler.cli.tick') as tick:
+            code, output = self.invoke('continue', str(self.task), '--state-dir', str(self.root / 'state'))
+        self.assertEqual(code, 1)
+        self.assertIn('checkpoint', output)
+        tick.assert_not_called()
+
     def test_view_refresh_and_interval_override(self):
         with patch("reqflow_scheduler.cli.time.sleep", side_effect=KeyboardInterrupt) as sleep:
             code, _ = self.invoke("view", str(self.task), "--watch", "--config", str(self.config),
@@ -105,9 +157,9 @@ class CliTests(unittest.TestCase):
 
     def test_view_refreshes_checkpoint_by_default(self):
         with patch("reqflow_scheduler.cli.read", side_effect=[
-            {"status": "running", "nodes": {"root": {"status": "running"}}},
+            {"status": "running", "nodes": {"root": {"status": "running", "pid": 123}}},
             {"status": "completed", "nodes": {"root": {"status": "completed"}}},
-        ]), patch("reqflow_scheduler.cli.time.sleep", side_effect=[None, KeyboardInterrupt]) as sleep:
+        ]), patch("reqflow_scheduler.view.process_running", return_value=True), patch("reqflow_scheduler.cli.time.sleep", side_effect=[None, KeyboardInterrupt]) as sleep:
             code, output = self.invoke("view", str(self.task))
         self.assertEqual(code, 130)
         self.assertRegex(output, "root [⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]")
@@ -141,3 +193,20 @@ class CliTests(unittest.TestCase):
         for hour, expected in ((22, False), (23, True), (0, True), (5, True), (6, False)):
             now = datetime(2026, 10, 31, hour, tzinfo=timezone(timedelta(hours=8)))
             self.assertEqual(sleeping(now, policy), expected)
+
+    def test_view_only_spins_for_a_verified_live_process(self):
+        task = dict(id='demo', workspace=str(self.root), tree=dict(id='root'))
+        state = dict(status='running', nodes={'root': dict(status='running', pid=123)})
+        with patch('reqflow_scheduler.view.process_running', return_value=False):
+            output = render_tree(task, state)
+        self.assertIn('Task demo | interrupted', output)
+        self.assertIn('root -', output)
+        self.assertEqual(state['nodes']['root']['status'], 'running')
+        with patch('reqflow_scheduler.view.process_running', return_value=True):
+            self.assertRegex(render_tree(task, state), 'root [⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]')
+        with patch('reqflow_scheduler.view.process_running', side_effect=OSError):
+            self.assertIn('Task demo | unknown', render_tree(task, state))
+        state['nodes']['root'].pop('pid')
+        self.assertIn('root -', render_tree(task, state))
+        state['nodes']['root']['status'] = 'interrupted'
+        self.assertIn('Task demo | interrupted', render_tree(task, state))

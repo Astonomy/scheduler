@@ -21,6 +21,7 @@ def timestamp(value):
 def fetch(task):
     process = subprocess.Popen([*executable(task), "app-server"], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                                start_new_session=os.name != 'nt')
     messages = queue.Queue()
 

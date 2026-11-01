@@ -1,0 +1,335 @@
+{
+  "id": "481demo",
+  "status": "completed",
+  "nodes": {
+    "round-001-prepare": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:28:08.426233+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19112-c9d3-7c33-82af-c3e21fa6f490",
+      "exit_code": 0
+    },
+    "round-001-cost": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:30:14.863726+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19114-b826-7073-a7c2-bd9e19e5f449",
+      "exit_code": 0
+    },
+    "round-001-quality": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:30:14.863726+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19114-b827-7752-bb28-1b9c3387cd99",
+      "exit_code": 0
+    },
+    "round-001-implement": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:34:52.378370+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19118-f327-72a1-8b4d-4a7549a11dfb",
+      "exit_code": 0
+    },
+    "round-001-summary": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:43:32.660778+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19120-e35b-77a1-bb6b-5329cce8bcd5",
+      "exit_code": 0
+    },
+    "round-002-contract": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:45:40.608239+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19122-db96-75c0-b6d0-62a8d8e75ca1",
+      "exit_code": 0
+    },
+    "round-002-status": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:45:40.608239+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19122-db95-7f72-9c37-bb09b3dc9e0d",
+      "exit_code": 0
+    },
+    "round-002-integrate": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:48:15.288092+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19125-3341-7bc2-9347-ac2af349f62e",
+      "exit_code": 0
+    },
+    "round-002-summary": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:51:02.046392+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19127-bec8-77c0-a333-a7d828392c95",
+      "exit_code": 0
+    },
+    "round-003-implement": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:53:16.679327+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a19129-ccda-78e2-a218-c9de5a91e90d",
+      "exit_code": 0
+    },
+    "round-003-summary": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:56:07.741081+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a1912c-6c2c-76e3-8a27-02c9f3a71bc5",
+      "exit_code": 0
+    },
+    "round-004-implement": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T08:58:31.244826+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a1912e-9960-7722-9349-201e9815fa59",
+      "exit_code": 0
+    },
+    "round-004-summary": {
+      "status": "completed",
+      "attempts": 1,
+      "started_at": "2026-10-31T09:46:01.126139+00:00",
+      "reason": null,
+      "command": [
+        "C:\\Program Files\\Volta\\node.EXE",
+        "D:\\volta\\tools\\image\\packages\\@openai\\codex\\node_modules\\@openai\\codex\\bin\\codex.js",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "-"
+      ],
+      "pid": null,
+      "session_id": "01a1915a-1f3d-7171-89e7-4654f1264d82",
+      "exit_code": 0
+    }
+  },
+  "current_node": "round-004-summary",
+  "current_nodes": [
+    "round-004-summary"
+  ],
+  "quota": {
+    "source": "codex-app-server",
+    "observed_at": "2026-10-31T09:46:01.126139+00:00",
+    "remaining_percent": 23,
+    "resets_at": "2026-10-31T12:28:38+00:00",
+    "blocked_until": null
+  },
+  "fingerprint": "1b6db788e7ebaa2cb53ceb349194ca675cd13fa1b6f83e3ba96921b3930709cd",
+  "next_check_at": null,
+  "reason": "all nodes completed",
+  "execution_task": {
+    "workspace": "D:\\code\\481\\requirement-compilation-structure-main",
+    "tree": {
+      "id": "round-001-prepare",
+      "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第1轮串行准备：核对当前仓库和旧轮次证据，原始四场景未执行且上一真实候选被中断；以最新writeup为准，确认当前未提交改动和运行进程，不能假定模型错误或环境错误。只写.agent/481demo/round-001/context.md：当前HEAD、已知证据、缺口、各指标定义、下一层两节点各自边界及评估候选。不要修改业务源码，不重新运行付费全流水线。下层分析节点会基于本文件并行工作。",
+      "children": [
+        {
+          "id": "round-001-cost",
+          "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第1轮并行成本与重试分析：等根context就绪后，读取现有模型日志/阶段报告和代码，找出时间/token/重复执行的一个具体可改进瓶颈，保留不完整usage。只写.agent/481demo/round-001/cost-analysis.md，可在output/481demo-cost-analysis/使用临时独占分析文件。禁止源码、tests、writeup、Git写操作和付费模型调用。提供可复核证据、最小建议、对应文件、效果验证方案及与quality节点潜在冲突。",
+          "children": [
+            {
+              "id": "round-001-implement",
+              "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第1轮串行实施：本层开始意味着cost和quality并行分析均已结束。读取两份报告，选一个证据充分、对业务完成最直接的最小改动，写.agent/481demo/round-001/implementation.md中的假设/验收，然后实施、相关测试及可行的小规模真实验证，优先完成原始四场景而非叠加预检。若报告不足，先做能消除不确定性的最小实验；不重复已知坏环境的高成本生成。将四项指标和已知限制精简写入.agent/481demo/round-001/result.json，根writeup更新改动及命令。只由本节点精确Git暂存、提交、push并验证远端HEAD，保留用户私有README。验证退化则撤回本节点自己的改动并记录结论，不重置其他历史。下一层总结将复查并提出本树下一轮计划。",
+              "children": [
+                {
+                  "id": "round-001-summary",
+                  "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第1轮串行总结与下一轮提交：读取本轮全部证据、实施结果及Git状态，必要时做最小验证（不重复全量昂贵生成）。总结仍有不足和四项目标进展，更新writeup及.agent/481demo/round-001/summary.md，提交推送自己的精简总结。依据结果决定下一轮：独立分析/不相交实现可以放同深度并行；跨文件依赖、共享源码、验收和Git交付必须后置串行。不得只有笼统“继续优化”：写具体问题、改动边界、指标、验收和回退条件。若有价值下一步，按共享协议在当前最大深度（本节点）下追加下一轮子图，保留所有旧节点/结构；独立workers可作为本节点children，集成与总结链挂在其中一个worker下，scheduler的层屏障保证所有同层worker完成后才集成。串行方案用单child链。下一轮最终总结节点需继续采用同树扩展协议，并从当前task树已有节点提示读取和保留共享约束，改正轮次/路径而不复制过时目标。调用scheduler.validate_extension测试候选时当前节点还running会拒绝，应做不写state的结构检查，并让controller在本节点completed后做真正验证；不改检查点伪造completed。写入extension.json后正常退出，让控制器接管。如果没有新方案，明确停止，不提交扩展。",
+                  "children": [
+                    {
+                      "id": "round-002-contract",
+                      "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第2轮并行Gender契约追溯：读round-001/summary.md与原始证据；只写.agent/481demo/round-002/contract-analysis.md，临时材料在output/481demo-round-002-contract/。从input需求、参考图、原始helpers、历史demo中间产物和生成提示追溯radio/select来源，给精确证据、契约冲突及最小生成链改动建议与后续单样本验收/回退。不得输出fixture凭据，不修改历史应用/原始测试/公共源码或文档，不调用模型，不运行Git写操作。无法明确时记录未知，不猜测radio为唯一业务语义。区别旧四场景两个需求与当前YAML三个需求，不把静态分析算通过。",
+                      "children": [
+                        {
+                          "id": "round-002-integrate",
+                          "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第2轮串行集成：本层屏障保证两个分析已完成。读.agent/481demo/round-002/contract-analysis.md和status-analysis.md，先写implementation.md验收，再最小修复evaluate_original.py结果分类（必要时协调器仅适配分类），tests正常位置；保留timedOut/interrupted/skipped/unexecuted和原始结果证据，混合结果必须保守且不能被passed覆盖。accepted仍要求exit0且四场景实际全部passed；不弱化helpers/spec或重试限制。针对缺命令/seed失败若非本轮实测必要不扩范围。用本轮原始results做离线回放应为2passed+2timedOut、accepted=false；旧日志不回填，回放写全新output目录。Gender契约若不明确仅记录冲突，若明确只提出精确生成链修复建议供下一轮，当前不改生成链或历史应用，不手改副本冒充生成。无付费模型，无全流水线；仅在离线证据不足且有明确新增验收问题时最多一次全新隔离历史demo验收，显式已有Chromium版本，所有失败保留不重试。相关测试及全量回归、原TS字节一致、独立DB/PID清理；分类退化或接受门禁放宽则仅回退自有增量。写result.json、writeup和implementation，精确暂存自有文件提交推送核对远端；不擅自暂存worker文件。不写提案。",
+                          "children": [
+                            {
+                              "id": "round-002-summary",
+                              "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第2轮串行总结：读取round-002全部报告、实施结果和Git状态，必要时最小无付费验证。更新writeup及.agent/481demo/round-002/summary.md，精确提交推送并核对远端。报告执行时间、实际token、原始业务准确性、全部尝试/修复，保留失败及未测。本轮不调用付费模型。只有本最终总结可依据新证据继续在481demo同树追加具体下一轮；读取当前树已有prompt保留共享约束，修正轮次/路径和具体目标；新节点深于当前最大深度且仅挂最深叶子，完整候选proposal-round-003.json，最终原子extension.json用当前state.fingerprint。当前running只做不写state的结构检查，正式validate_extension交controller在全部completed后执行。没有有价值新方案明确停止不追加，不改检查点、不启动调度器。",
+                              "children": [
+                                {
+                                  "id": "round-003-implement",
+                                  "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第3轮串行生成链契约实施：读round-002/summary.md和contract-analysis.md（未跟踪报告以summary证据重新核对）。先写.agent/481demo/round-003/implementation.md验收。追溯output/demo/.arc/visual_analysis.json的radio与Stage09调用ccc3b998a11a4831a170705558598dd0发布select的分叉。只修一个改动轴：视觉明确radio时保留互斥选项与组标签，贯通infrastructure/stages/frontend/ui/{design,synthesis,implementation,testing}.py中设计、实现提示及compiler-owned冻结存在性断言。优先现有input_type=radio/container表达，仅确认缺口才补最小表示；不建泛化控件框架，不凭Gender字段名猜radio，正文仍决定业务语义、图片不证明DOM。Nationality等普通select维持原义。聚焦无网络测试验证组名/角色/选项/共享绑定与互斥约束进入冻结测试，以及select回归、无明确视觉radio不得硬编码。不得修改input/helpers或原spec、历史output应用、模型参数；无付费模型、无生成流水线、无浏览器或历史应用执行。合成fixture和mock只算契约验证；无法可靠贯通则准确记录阻塞，不宣称修复完成。运行相关及全量回归、diff检查，写result.json及writeup，保留每次测试/修复和耗时，模型/token0、usage不适用、生成尝试/修复0/0，业务无新增执行、成功生成A/B0。辅助文件.agent/481demo/round-003，日志output全新子目录。精确提交自有源码/测试/writeup/节点材料，推送核对远端，保留worker和用户改动。不写提案。",
+                                  "children": [
+                                    {
+                                      "id": "round-003-summary",
+                                      "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第3轮串行总结：读round-003全部实施材料及Git状态，复核视觉radio到设计/实现/冻结存在性测试证据及普通select回归，必要时最小无付费验证；本节点不调用模型或浏览器。更新writeup及.agent/481demo/round-003/summary.md，精确提交推送核对远端。报告耗时、实际token、全部尝试/修复、失败与未测；没有新业务实测则保留原2passed+2timedOut和旧需求1/2、当前三需求八场景未完整验证，不称成本或准确率收益。只有本最终总结可根据证据追加第4轮：若契约贯通且宿主就绪，可提出最多一次新output目录固定配置串行真实生成、隔离DB/端口、原TS字节一致、workers1/retries0的原四场景验收；记录SDK/HTTP尝试、usage缺失、生成修复和所有失败，明确单样本非成功A/B。否则仅有具体可执行修复才追加，无证据进展则停止。完整候选proposal-round-004.json保留当前树全部内容和共享约束，只挂最深叶子且新节点全部更深；以当前state.fingerprint最终原子发布extension.json。running仅不写state结构检查，正式validate_extension交controller在全部completed后执行，不改配置/检查点、不启动调度器。",
+                                      "children": [
+                                        {
+                                          "id": "round-004-implement",
+                                          "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第4轮串行真实单样本实施：先读round-003/summary.md及实施证据，写.agent/481demo/round-004/implementation.md具体验收。仅本串行节点授权最多一次真实全流水线生成；固定当前input、模型与.env（禁止输出凭据）、SDK默认重试，绝对workspace npm cache，全新output带时间戳目录，不复用旧应用或缓存作为新生成收益。付费前验证Node userInfo、tsx启动、缓存可写、既有SSH、无遗留生成服务、可用隔离端口及DB路径；失败记录停止，不通过额外模型重试掩盖。不得改input原三个TS/helpers/spec；保存并核对运行前后及独立runner副本字节一致。不得为变绿放宽冻结断言、改模型或手改历史output/demo。生成仅运行一次run_all，完整原始模型/console/run日志放output；记录外部与阶段耗时、SDK调用及HTTP所有尝试/重试/未完成、实际prompt/completion/total token和usage覆盖/缺失、视觉纠错、生成agent尝试及每次修复和失败，缺失不得计0。未知中断或失败不重新付费跑全流水线。生成成功后只针对本次新应用的真实schema/密码/会话实现编写最小隔离reset/seed及runner（辅助.agent/481demo/round-004），不得直接套用历史seed；独立DB绝不写应用自有DB、动态独立端口、Windows无窗口进程、仅清理自有PID树并核对端口释放和DB关闭。至多一次原四场景业务验收，workers1/retries0，固定Playwright1.56.1；显式使用已安装Chromium1200并记录版本差异，缺依赖安装失败保留不无限重试。记录passed/failed/timedOut/interrupted/skipped/unexecuted原始分类，accepted仍需seed0/runner0/四passed，旧需求与当前三需求八场景覆盖分开。若生成失败则四场景未测，不把提前失败、零调用或复用算收益。只做必要无付费回归，不启动额外模型实验。写result.json、writeup及实施报告，记录全部测试尝试、修复、失败和未测；单样本非成功A/B，无可比较成功样本不声称优化收益。精确提交自有文件并推送、实时核对远端；不暂存其他节点或私有README。不写提案、不改scheduler配置/检查点、不启动调度器，额度等待和准确会话恢复交scheduler。",
+                                          "children": [
+                                            {
+                                              "id": "round-004-summary",
+                                              "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第4轮最终串行总结：读round-004全部证据、原始run/model/acceptance状态（不披露凭据）与Git状态；不调用模型或浏览器，不重跑生成。必要时仅最小无付费验证。更新writeup和.agent/481demo/round-004/summary.md，精确提交自有文件推送并实时核对。报告所有真实尝试的执行时间、实际token及usage缺失、SDK/HTTP尝试和重试、生成尝试/修复、原四场景真实分类和原TS字节核对、DB/端口/PID清理，保留全部失败未测和版本差异。缺失数据不当0，单样本不作成功A/B；历史2passed+2timedOut/旧需求1/2不能冒充新样本，当前三需求八场景覆盖单独报告。只有本最终总结依据新证据提出有价值且具体可执行的后继；无新证据或未知失败无诊断则明确停止，不重复付费实验。若确有方案，在同树最深叶子下更深层追加完整候选proposal-round-005.json，保留全部旧节点、执行配置、共享约束及allow_append=true；新prompt具体说明验收与下一总结。running仅不写state结构检查，全部completed后正式validate_extension由controller执行。最终实时state.fingerprint原子发布extension.json；不改活动配置/检查点，不启动调度器。"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "round-002-status",
+                      "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第2轮并行分类分析：只写.agent/481demo/round-002/status-analysis.md，临时材料在output/481demo-round-002-status/。读取evaluate_original.py、相关测试、round-001真实results/orchestration及协调器原始状态采集；设计最小分类映射，明确passed/failed/timedOut/interrupted/skipped/unexecuted、空结果及混合结果的保守规则，保持exit0且四实测passed才accepted。提供无网络回放验证方案（本轮应2passed+2timedOut）及必要测试，不写公共源码/测试/writeup、不Git写入或模型调用，不回填旧日志。避免把观测修复当业务或生成收益。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "round-001-quality",
+          "prompt": "你是481demo同一任务树中的项目优化节点。用户授权对 D:/code/481/requirement-compilation-structure-main 循环优化、测试、每轮Git提交并推送，以及将下一轮方案追加到同一树。先读 D:/VScode/.codex/skills/karpathy-guidelines/SKILL.md、项目writeup.md；不要输出或暂存.agent/README.md，该用户文件含凭据。只使用原生Windows。本项目编码外辅助文件放.agent/481demo/；源码、测试和根writeup保留正常位置；原始模型日志和生成应用放output/，scheduler任务、检查点与日志放项目外。保留其他节点和用户改动，不使用git add .或-A，不强推或重置历史。源码不得包含账户密码，既有SSH key优先；认证不能成功则准确记录。\n全树规则：同一深度节点由scheduler并行，下一深度等待本层全部完成。并行节点只写自己负责的文件，不改公共源码/文档，不运行Git写操作或大规模付费模型实验；有代码交叉依赖时放下一层，由一个集成节点修改。只有集成/总结节点在串行层提交并推送，精确暂存自有文件；.agent需要强制暂存时逐文件指定且绝不包括私有README。模型调用只由明确授权的串行实施节点控制，不多节点同时付费跑全流水线。每轮目标是执行时间、实际token、原始业务准确性、所有尝试和修复次数；零调用、缓存复用、提前失败不得算成功生成收益，mock不能作为真实A/B收益。保留失败、未测、usage缺失。每次生成全新输出目录，小样本优先，不无限复跑未知失败。测试与契约保持业务含义不被削弱。\n新调度方式替代旧chain协议：任务ID永远481demo，配置D:/code/scheduler/config/481demo.json，控制器D:/code/scheduler/runtime/481demo/controller.py。禁止创建新顶层任务ID、旧next.json或自行启动watch/tick/controller。仅在串行总结节点提出下一轮完整扩展候选，不直接改当前任务配置；控制器待本树全部completed后验证并采用。旧节点prompt、ID、父子关系及顺序、workspace、codex、timeout不允许改。新节点必须全部深于当前最大深度，只能挂到最深叶子；同层独立工作并行，多层工作依赖串行。保留allow_append=true。扩展候选完整任务JSON放D:/code/scheduler/runtime/481demo/proposal-round-NNN.json，最终原子写extension.json，内容为{\"base_fingerprint\":\"当前state.fingerprint\",\"candidate_file\":\"候选绝对路径\"}；检查点在用户目录.reqflow-scheduler/481demo/state.json。只有最后总结节点写提案，其他节点写自己的分析结果。新prompt必须包含本共享约束并说明本轮实际具体验收，后继继续在同树总结与追加。若无可执行新方案或阻塞无证据进展，写清停止原因，不重复追加无效任务。所有额度耗尽等待/重查/准确原会话继续交scheduler处理。\n\n第1轮并行业务准确性分析：读取根context和evaluate_original.py、原始四场景、历史生成产物，找出独立验收尚未完成的具体阻塞，设计reset/seed及可执行验收步骤，或指出最小必要源码修复。只写.agent/481demo/round-001/quality-analysis.md，在output/481demo-quality-analysis/放独占临时文件。禁止源码、公共文档、Git写操作或付费模型调用，不弱化场景。可运行不会修改仓库的定向发现/探针，证明可行性，不把发现测试算业务通过。"
+        }
+      ]
+    },
+    "codex": [
+      "codex"
+    ],
+    "timeout_seconds": 14400,
+    "allow_append": true
+  },
+  "checked_at": "2026-10-31T09:48:10.372876+00:00"
+}
