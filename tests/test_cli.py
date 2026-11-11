@@ -12,6 +12,8 @@ from unittest.mock import patch
 from reqflow_scheduler.cli import main
 from reqflow_scheduler.config import load_config
 from reqflow_scheduler.scheduler import sleeping
+from reqflow_scheduler.scheduler import fingerprint, load_task
+from reqflow_scheduler.state_store import write
 from reqflow_scheduler.view import render_tree
 
 
@@ -146,6 +148,106 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('checkpoint', output)
         tick.assert_not_called()
+
+    def test_submit_new_external_task_acknowledges_waiting_and_preserves_policy(self):
+        def launch(command, **options):
+            ready = Path(command[command.index('--background-ready') + 1])
+            write(ready, {'id': 'demo', 'status': 'waiting', 'reason': 'quota exhausted', 'running_nodes': []})
+            return type('Process', (), {'pid': 123})()
+
+        with patch('reqflow_scheduler.cli.subprocess.Popen', side_effect=launch) as spawn, \
+                patch('reqflow_scheduler.cli.continue_task') as resume, \
+                patch('reqflow_scheduler.quota_adapter.query') as quota:
+            code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'),
+                '--config', str(self.config), '--interval-seconds', '3')
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output)['status'], 'waiting')
+        self.assertEqual(json.loads(output)['scheduler_pid'], 123)
+        self.assertIn(str(self.config.resolve()), spawn.call_args.args[0])
+        self.assertIn('watch', spawn.call_args.args[0])
+        self.assertEqual(spawn.call_args.args[0][spawn.call_args.args[0].index('--interval-seconds') + 1], '3')
+        self.assertEqual(json.loads((self.root / 'state/demo/submit.json').read_text())['task'], str(self.task.resolve()))
+        resume.assert_not_called()
+        quota.assert_not_called()
+
+    def test_submit_reuses_live_background_and_rejects_changed_dispatched_content(self):
+        folder = self.root / 'state/demo'
+        write(folder / 'submit.json', {'pid': 123})
+        write(folder / 'state.json', {'status': 'waiting', 'nodes': {}, 'fingerprint': fingerprint(load_task(self.task))})
+        with patch('reqflow_scheduler.cli.process_running', return_value=True), \
+                patch('reqflow_scheduler.cli.subprocess.Popen') as spawn:
+            code, output = self.invoke('submit', str(self.task), '--state-dir', str(folder.parent))
+            self.assertEqual(code, 0)
+            self.assertTrue(json.loads(output)['already_running'])
+            changed = json.loads(self.task.read_text())
+            changed['tree']['prompt'] = 'changed after dispatch'
+            self.task.write_text(json.dumps(changed))
+            code, output = self.invoke('submit', str(self.task), '--state-dir', str(folder.parent))
+        self.assertEqual(code, 1)
+        self.assertIn('task tree changed', output)
+        spawn.assert_not_called()
+
+    def test_submit_does_not_implicitly_recover_or_ignore_stop(self):
+        for status in ('interrupted', 'stopped', 'running'):
+            with self.subTest(status=status):
+                write(self.root / 'state/demo/state.json', {'status': status, 'nodes': {}})
+                with patch('reqflow_scheduler.cli.subprocess.Popen') as spawn, \
+                        patch('reqflow_scheduler.cli.continue_task') as resume:
+                    code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'))
+                self.assertEqual(code, 1)
+                self.assertIn('continue', output)
+                spawn.assert_not_called()
+                resume.assert_not_called()
+
+    def test_submit_completed_task_does_not_restart_or_query_quota(self):
+        write(self.root / 'state/demo/state.json', {'status': 'completed', 'nodes': {}})
+        with patch('reqflow_scheduler.cli.subprocess.Popen') as spawn, \
+                patch('reqflow_scheduler.quota_adapter.query') as quota:
+            code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'))
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output)['status'], 'completed')
+        spawn.assert_not_called()
+        quota.assert_not_called()
+
+    def test_submit_background_startup_failure_is_reported(self):
+        with patch('reqflow_scheduler.cli.subprocess.Popen') as spawn:
+            spawn.return_value.pid = 123
+            spawn.return_value.poll.return_value = 1
+            spawn.return_value.returncode = 1
+            code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'))
+        self.assertEqual(code, 1)
+        self.assertIn('background scheduler exited (1)', output)
+        self.assertIn('submit.log', output)
+
+    def test_submit_real_background_survives_return_and_repeated_submission(self):
+        definition = json.loads(self.task.read_text())
+        definition['not_before'] = '2100-01-01T00:00:00+00:00'
+        self.task.write_text(json.dumps(definition))
+        workers = []
+        real_popen = subprocess.Popen
+
+        def launch(*args, **kwargs):
+            worker = real_popen(*args, **kwargs)
+            workers.append(worker)
+            return worker
+
+        try:
+            with patch('reqflow_scheduler.cli.subprocess.Popen', side_effect=launch):
+                code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'), '--interval-seconds', '1')
+                self.assertEqual(code, 0, output)
+                self.assertEqual(json.loads(output)['status'], 'waiting')
+                self.assertIsNone(workers[0].poll())
+                code, output = self.invoke('submit', str(self.task), '--state-dir', str(self.root / 'state'))
+                self.assertEqual(code, 0, output)
+                self.assertTrue(json.loads(output)['already_running'])
+                self.assertEqual(len(workers), 1)
+            state = json.loads((self.root / 'state/demo/state.json').read_text())
+            self.assertEqual(state['reason'], 'not due')
+            self.assertNotIn('quota', state)
+        finally:
+            (self.root / 'state/demo/stop').touch()
+            for worker in workers:
+                worker.wait(timeout=10)
 
     def test_view_refresh_and_interval_override(self):
         with patch("reqflow_scheduler.cli.time.sleep", side_effect=KeyboardInterrupt) as sleep:

@@ -105,6 +105,21 @@ stop handling and exact-session recovery still apply.
 
 ## Operations
 
+### Submit from an external completion hook
+
+`scheduler submit D:/tasks/task.json` starts a detached watcher for a new task and
+returns a JSON acknowledgement with the actual running/waiting status, scheduler
+PID and log path. This lets an external hook wait for a remote job without keeping
+a Codex turn open, then submit the next task when results are ready.
+
+The background watcher retains normal quota, scheduling and checkpoint rules.
+Repeated submission reuses a live submitted watcher; completed tasks are not
+restarted. Interrupted/stopped tasks require the existing `continue` recovery
+flow. `--state-dir`, `--config` and `--interval-seconds` are supported.
+Definitions can remain outside this checkout, with runtime records under
+`~/.reqflow-scheduler/<id>/` (`submit.json` and `submit.log`). Keep service-specific
+polling and credentials in the external component. See [external hooks](docs/external-hooks.md).
+
 ### Run from any directory
 
 Install the CLI as a user tool (no virtual environment activation needed):

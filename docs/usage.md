@@ -17,6 +17,10 @@
 
 ## 安装与使用
 
+外置完成 hook 可用 `scheduler submit 任务文件` 提交新任务：命令在收到后台 watcher 的实际运行/等待回执后返回。
+重复调用复用存活 watcher；停止/中断的任务仍通过 `continue` 恢复。`submit` 支持 `--config`、`--state-dir`、`--interval-seconds`，
+日志和进程记录为任务状态目录的 `submit.log` 与 `submit.json`，不改变额度或时段策略。参见 [外置 hook](external-hooks.md)。
+
 需要 Python 3.11+、已登录的 Codex CLI，无第三方运行依赖。
 
 ```powershell

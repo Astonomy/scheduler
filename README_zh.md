@@ -112,6 +112,17 @@ python -m venv .venv
 
 节点完成表示 Codex turn 正常结束，业务验收以项目测试和验收标准为准。
 
+## 外置 hook 提交
+
+`scheduler submit D:/tasks/task.json` 在后台启动新任务的 watcher，返回 JSON 启动回执，
+包含真实的运行/等待状态、调度器 PID 和日志路径。外置组件可以独立等待远程任务，
+结果就绪后再提交优化任务，无需让 Codex turn 保持等待。
+
+支持 `--state-dir`、`--config`、`--interval-seconds`，保留现有额度、时段和检查点规则。
+重复调用复用存活的后台 watcher，已完成任务不重跑；中断或停止的任务仍通过 `continue` 恢复。
+任务文件可以放在 scheduler 仓库外，运行回执和日志位于用户状态目录中的 `submit.json`、`submit.log`。
+网站凭证与轮询逻辑保留在外置组件中。参见[外置 hook 接入说明](docs/external-hooks.md)。
+
 ## 文档
 
 - [完整手册](docs/usage.md)：可选配置、退出码、Windows 调度和兼容行为。
