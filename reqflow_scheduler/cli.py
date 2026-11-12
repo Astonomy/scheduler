@@ -13,7 +13,7 @@ from .config import load_config
 from .view import render_tree
 from .scheduler import continue_task, fingerprint, load_task, paths, process_running, recover, tick, validate_extension
 from .state_store import Busy, lock, read, write
-from .task_list import DEFAULT_TASK_DIR, render_tasks, resolve_task
+from .task_list import DEFAULT_TASK_DIR, remove_task, render_tasks, request_stop, resolve_task
 
 
 def main(argv=None):
@@ -24,6 +24,12 @@ def main(argv=None):
     list_parser = sub.add_parser("list", help="list task definitions and saved progress; never dispatch")
     list_parser.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR))
     list_parser.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
+    list_parser.add_argument("--all", action="store_true", help="include archived completed and removed task trees")
+    rm_parser = sub.add_parser("rm", help="permanently delete matching task definitions, checkpoints and logs")
+    rm_parser.add_argument("task_id", metavar="PATTERN", help="task ID or glob pattern (*, ?, [abc]); quote wildcards")
+    rm_parser.add_argument("--regex", action="store_true", help="match the entire ID using a regular expression instead of glob")
+    rm_parser.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR))
+    rm_parser.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
     for name in ("tick", "watch", "submit", "continue", "quota", "status", "stop", "recover", "view", "models", "usage", "feedback"):
         p = sub.add_parser(name)
         p.add_argument("task")
@@ -40,7 +46,7 @@ def main(argv=None):
             p.add_argument("--interval-seconds", type=int)
         if name == "watch":
             p.add_argument("--background-ready", help=argparse.SUPPRESS)
-        if name in {"view", "continue"}:
+        if name in {"view", "continue", "stop"}:
             p.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR), help="directory to search for task IDs")
         if name == "view":
             mode = p.add_mutually_exclusive_group()
@@ -50,13 +56,20 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.action == "list":
-            print(render_tasks(args.task_dir, args.state_dir))
+            print(render_tasks(args.task_dir, args.state_dir, include_completed=args.all))
+            return 0
+        if args.action == "rm":
+            result = remove_task(args.task_id, args.task_dir, args.state_dir, regex=args.regex)
+            print(json.dumps(result, ensure_ascii=False))
+            return 3 if result.get("skipped") else 0
+        if args.action == "stop":
+            print(json.dumps(request_stop(args.task, args.task_dir, args.state_dir), ensure_ascii=False))
             return 0
         config = load_config(args.config)
         if args.action == "config":
             print(json.dumps(config, ensure_ascii=False, indent=2))
             return 0
-        task_path = resolve_task(args.task, args.task_dir) if args.action in {"view", "continue"} else args.task
+        task_path = resolve_task(args.task, args.task_dir, args.state_dir) if args.action in {"view", "continue"} else args.task
         task = load_task(task_path)
         if args.config:
             task.update({key: value for key, value in config.items() if key != "interval_seconds"})
@@ -106,6 +119,17 @@ def main(argv=None):
                         print(json.dumps({"id": task["id"], "status": "completed"}), flush=True)
                         return 0
                 else:
+                    state = read(state_path, {})
+                    if state.get("fingerprint") and state["fingerprint"] != fingerprint(task):
+                        raise ValueError("task changed after dispatch")
+                    background = read(record_path, {})
+                    if background.get("pid") and process_running(background["pid"]) and not stop_path.exists():
+                        print(json.dumps({"id": task["id"], "status": state.get("status", "starting"),
+                            "scheduler_pid": background["pid"], "already_running": True}), flush=True)
+                        return 2 if state.get("status") in {"interrupted", "stopped"} else 0
+                    if state.get("status") == "completed":
+                        print(json.dumps({"id": task["id"], "status": "completed"}), flush=True)
+                        return 0
                     continue_task(task, args.state_dir)
                 folder.mkdir(parents=True, exist_ok=True)
                 ready = folder / ("." + args.action + "-" + uuid.uuid4().hex + ".json")
@@ -119,8 +143,7 @@ def main(argv=None):
                 with log_path.open("ab") as log:
                     process = subprocess.Popen(command, cwd=Path(__file__).resolve().parent.parent,
                         stdin=subprocess.DEVNULL, stdout=log, stderr=log, **options)
-                if args.action == "submit":
-                    write(record_path, {"pid": process.pid, "task": str(Path(task_path).resolve())})
+                write(record_path, {"pid": process.pid, "task": str(Path(task_path).resolve())})
                 try:
                     while True:
                         result = read(ready)
@@ -153,10 +176,6 @@ def main(argv=None):
                 result = quota_adapter.query(task, datetime.now(timezone.utc))
             elif args.action == "recover":
                 result = recover(task, args.state_dir, args.inspected)
-            elif args.action == "stop":
-                folder.mkdir(parents=True, exist_ok=True)
-                stop_path.touch()
-                result = {"id": task["id"], "stop_requested": True}
             else:
                 result = read(state_path, {"id": task["id"], "status": "queued"})
             if args.action == "view":

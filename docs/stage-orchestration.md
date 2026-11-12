@@ -74,17 +74,36 @@ cd D:/code/scheduler
 
 ## 输出、交接与独立检查
 
-每次调用提供 `--output-schema`，同时在 Scheduler 内再次校验，不能仅依赖远端结构化输出支持。字段类型均为字符串数组，枚举除外：
+每次调用提供 `--output-schema`，同时在 Scheduler 内再次校验，不能仅依赖远端结构化输出支持。除枚举和 `repair_design` 外，字段类型均为字符串数组：
 
 | 阶段 | 必填字段 |
 | --- | --- |
-| Analysis | `requirements`, `architecture`, `implementation_plan`, `affected_files`, `dependencies`, `risks`, `test_plan` |
+| Analysis | `requirements`, `architecture`, `implementation_plan`, `affected_files`, `dependencies`, `risks`, `test_plan`, `repair_design`（结构化设计数组） |
 | Implementation | `status`（`IMPLEMENTED`/`NEEDS_ANALYSIS`）, `changes`, `tests`, `logs`, `issues` |
 | Verification | `status`（`PASS`/`FAIL`）, `requirement_coverage`, `correctness`, `test_results`, `identified_issues`, `suggested_fixes`, `rework_stage`（`analysis`/`implementation`） |
 
-原始需求、Analysis 结果、实现结果、上次审查、实际命令日志和 Agenthook 证据进入后续提示词。Verification 另接收实际 `git diff HEAD` 和含未跟踪文件的 `git status`，并要求独立查看文件、重跑测试。仓库读取失败会如实保留退出码和错误。PASS 必须具有覆盖、正确性和测试说明，不得有未解决问题，且本次验证会话至少执行过一次退出码为 0 的工具命令；这只是最低证据门槛，测试是否充分仍由独立模型按原验收标准判断。没有用退出码代替业务验收。
+Analysis 负责完成根因定位与修复设计，不能把“继续追踪”“增加校验”等调查建议当作交付给 Implementation 的方案。必须读取真实源码，可运行只读探针或隔离复现，并针对每个待修问题提供以下 `repair_design`：
+
+| 字段 | 内容 |
+| --- | --- |
+| `issue` | 实际失败行为或需要补齐的能力 |
+| `root_cause` | 从生成、校验、反馈到修复退出的具体因果链 |
+| `why_existing_checks_missed` | 现有检查为何没有阻止错误结果 |
+| `evidence` | 非空证据列表：文件与函数/行号、命令及观察结果、原始日志路径 |
+| `changes` | 非空改动列表，每项包含 `file`、`symbol`、`current_behavior`、`proposed_change`；说明具体算法、数据契约、分支和调用方变化 |
+| `regression_tests` | 非空测试列表，每项包含 `file`、`command`、`expected_before`、`expected_after`；覆盖反例与已有正常行为 |
+
+新功能和操作类节点应定位已有入口，设计缺失行为或准确执行步骤，而非虚构缺陷。证据不足时必须在 `risks` 说明缺失项，并返回空 `repair_design`，不得编造定位。空设计、缺字段、空白设计内容或本次分析没有成功工具命令均不能交接：保留在 Analysis，将校验错误反馈给下一次分析，连续失败受 `max_stage_attempts` 和总预算限制。结构校验与成功工具命令只是最低门槛，根因和设计是否正确仍由实现核对及独立 Verification 判断。
+
+Implementation 按设计先补失败回归再实现，逐项报告改动和测试；设计被源码反证、仍缺决策或无法落实时，返回 `NEEDS_ANALYSIS`，附具体文件、函数和证据，不能用泛泛调查或仅修改提示词代替实现。Verification 独立核对根因、设计、实际改动和修复前后预期，并检查反例，不能只看实现方新增测试全绿。
+
+新契约用于后续 Analysis 输出；已有历史结果和预算不自动迁移、重置，预算耗尽的任务不会因此自动重新启动。旧格式分析输出若仍待交接，会被判为不完整，按原有阶段重试预算重新分析。
+
+原始需求、Analysis 结果、实现结果、上次审查、实际命令日志和 Agenthook 证据保存为每次调用的 `context.json`。提示词携带阶段契约、历史调用目录、命令计数和完整证据路径；超过 24000 字符的字段使用明确标记的预览与文件引用，避免把全部历史 stdout 反复拼入输入。Verification 的完整证据还包括实际 `git diff HEAD` 和含未跟踪文件的 `git status`，并要求按需读取相关文件、独立重跑测试。仓库读取失败会如实保留退出码和错误。PASS 必须具有覆盖、正确性和测试说明，不得有未解决问题，且本次验证会话至少执行过一次退出码为 0 的工具命令；这只是最低证据门槛，测试是否充分仍由独立模型按原验收标准判断。没有用退出码代替业务验收。
 
 状态目录中每次调用保留 `output-schema.json`、`events.jsonl`、`stderr.log` 和合法输出的 `result.json`。`state.json` 另保存 `results`、`artifacts` 和调用账本。模型 turn 完成先保存为 `turn_completed`，只有阶段交接成功后才推进状态；若此时崩溃，重启或 continue 会处理已保存结果，不重复启动该模型，也不会把 Analysis 的成功当成整个节点成功。
+
+若日志证明首次 `turn/start` 因 `input_too_large` 被拒绝，恢复时使用原会话 ID，发送修正后的完整阶段契约和证据引用；不会只发送缺少任务上下文的“继续”。若服务端明确返回该线程没有 rollout，且该线程所有本地尝试均无 `turn.started`，则保留旧线程和失败记录，重新启动尚未执行的阶段。已经开始执行或证据不足的会话不会据此丢弃，仍按原方式续跑。历史失败尝试保留在调用账本中，恢复不会抹掉 `interrupted` 历史。
 
 ## Agenthook 集成
 

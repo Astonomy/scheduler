@@ -140,11 +140,31 @@ current node and absolute file paths. Example definitions are excluded.
 Use `scheduler list --task-dir D:/tasks --state-dir D:/scheduler-state` for
 custom locations. Tasks stored elsewhere require `--task-dir`; checkpoints
 without a matching definition still appear. The command never dispatches work.
+Completed task trees are automatically archived from the default list, including
+existing completed checkpoints. Use `scheduler list --all` to include them.
+Use `scheduler rm TASK_ID` to permanently delete its definitions and complete state
+directory, including checkpoints and logs. This also deletes external definitions
+referenced by submission records; project source files remain untouched. Supports
+`--task-dir` and `--state-dir`. Quote glob patterns: `scheduler rm 'arcbench-*'`
+(`*`, `?`, `[abc]`), or use `scheduler rm --regex '^arcbench-.*$'` for full-ID regex
+matching. Each match is checked and deleted independently; tasks that are running,
+locked or cannot be deleted are skipped while remaining matches are processed.
+The result lists deleted `ids` and `skipped` IDs with reasons; any skipped task
+returns exit code 3. `scheduler stop TASK_ID` accepts IDs even when only a checkpoint
+survives; wait for its watcher/child to exit before retrying removal.
+Deleted tasks disappear from `list --all` too.
+Archiving retains task definitions, checkpoints and logs in place; `status` and
+`view` still work, and repeated submission does not rerun completed nodes.
+For tasks with `allow_append`, adding unfinished nodes makes the tree appear as
+queued again until the new levels complete.
 `view` accepts either a task file path or a task ID, for example
 `scheduler view reqcomp-cycle-20261031-retry-001`. IDs are matched against the
 `id` field of JSON definitions in the installation's `config` directory;
 use `--task-dir D:/tasks` to search elsewhere. Duplicate IDs require an explicit
-file path. Checkpoints alone cannot reconstruct a task tree.
+file path. If no definition matches there, ID lookup also checks the task path
+saved by `submit`/`continue` in the selected state directory. `list` uses that
+record to show external definitions and their node totals too. The recorded file
+must still exist and contain the requested ID; checkpoints alone cannot reconstruct a task tree.
 Use an absolute task file path with `view` to open definitions outside that directory;
 pass the same `--state-dir` used during execution if it was customized.
 

@@ -21,7 +21,17 @@ ROUTES = {"version": 1, "analysis": {"provider": "codex", "model": "gpt-6-astra"
 
 def result(stage, status="PASS", rework="implementation"):
     if stage == "analysis":
-        return {key: ["evidence"] for key in stages.ANALYSIS_FIELDS}
+        value = {key: ["evidence"] for key in stages.ANALYSIS_FIELDS}
+        value["repair_design"] = [dict(issue="Invalid output escapes the repair gate",
+            root_cause="The acceptance branch returns before checking persisted output",
+            why_existing_checks_missed="The existing regression only asserts that the command exits",
+            evidence=["agent.py:validate_output returns True before validating the response"],
+            changes=[dict(file="agent.py", symbol="validate_output", current_behavior="Accepts invalid output",
+                          proposed_change="Validate the response before returning success; feed failures into repair")],
+            regression_tests=[dict(file="tests/test_agent.py", command="python -m unittest discover -s tests -p test_agent.py",
+                                   expected_before="Invalid output is accepted and the regression fails",
+                                   expected_after="Invalid output triggers repair and valid output remains accepted")])]
+        return value
     if stage == "implementation":
         return dict(status="IMPLEMENTED", changes=["change"], tests=["test"], logs=[], issues=[])
     return dict(status=status, requirement_coverage=["checked"], correctness=["checked"],
@@ -71,6 +81,115 @@ class StageTests(unittest.TestCase):
         self.assertIn("independently", self.calls[2][1]["prompt"])
         self.assertEqual(state["usage"]["total"]["calls"], 3)
         self.assertEqual(state["usage"]["by_stage"]["implementation"]["tokens"], 15)
+
+    def test_located_repair_design_reaches_implementation_and_verification(self):
+        state = self.execute()
+        analysis = result("analysis")
+        self.assertEqual(state["nodes"]["root"]["results"]["analysis"], analysis)
+        for index in (1, 2):
+            prepared = self.calls[index][1]
+            folder = Path(prepared["schema_path"]).parent
+            self.assertEqual(read(folder / "context.json")["analysis"]["repair_design"], analysis["repair_design"])
+            self.assertIn("validate_output", prepared["prompt"])
+            self.assertIn("expected_before", prepared["prompt"])
+        self.assertEqual(self.calls[0][1]["route"]["model"], "gpt-6-astra")
+        self.assertEqual(self.calls[1][1]["route"]["model"], "deepseek-flash")
+
+    def test_incomplete_analysis_never_dispatches_implementation(self):
+        complete = result("analysis")
+        invalid = []
+        legacy = copy.deepcopy(complete)
+        legacy.pop("repair_design")
+        invalid.append(legacy)
+        for key in ("issue", "root_cause", "why_existing_checks_missed", "evidence", "changes", "regression_tests"):
+            value = copy.deepcopy(complete)
+            value["repair_design"][0][key] = [] if isinstance(value["repair_design"][0][key], list) else " "
+            invalid.append(value)
+        for group, key in (("changes", "file"), ("changes", "symbol"), ("changes", "proposed_change"),
+                           ("regression_tests", "command"), ("regression_tests", "expected_before"),
+                           ("regression_tests", "expected_after")):
+            value = copy.deepcopy(complete)
+            value["repair_design"][0][group][0][key] = ""
+            invalid.append(value)
+        invalid.append({**complete, "repair_design": []})
+        for index, value in enumerate(invalid):
+            with self.subTest(case=index):
+                self.task["id"] = f"incomplete-{index}"
+                self.calls.clear()
+                normal = self.fake()
+                def run(task, ns, save, folder, stop):
+                    normal(task, ns, save, folder, stop)
+                    ns["final_message"] = json.dumps(value)
+                with patch("reqflow_scheduler.dispatch.run", side_effect=run):
+                    state = tick(self.task, self.root / "state", self.now)
+                self.assertEqual(state["status"], "blocked")
+                self.assertEqual([call[0] for call in self.calls], ["analysis", "analysis"])
+                self.assertTrue(state["nodes"]["root"]["output_error"])
+                self.assertIn("previous_output_error", self.calls[1][1]["prompt"])
+
+    def test_analysis_without_source_inspection_does_not_handoff(self):
+        normal = self.fake()
+        def run(task, ns, save, folder, stop):
+            normal(task, ns, save, folder, stop)
+            ns["tool_results"] = []
+        with patch("reqflow_scheduler.dispatch.run", side_effect=run):
+            state = tick(self.task, self.root / "state", self.now)
+        self.assertEqual(state["status"], "blocked")
+        self.assertIn("source inspection", state["nodes"]["root"]["output_error"])
+        self.assertEqual([call[0] for call in self.calls], ["analysis", "analysis"])
+
+    def test_analysis_completes_design_before_deepseek_is_dispatched(self):
+        normal = self.fake()
+        def run(task, ns, save, folder, stop):
+            normal(task, ns, save, folder, stop)
+            if len(self.calls) == 1:
+                value = result("analysis")
+                value["repair_design"] = []
+                value["risks"] = ["Missing the source trace for the failed acceptance branch"]
+                ns["final_message"] = json.dumps(value)
+        with patch("reqflow_scheduler.dispatch.run", side_effect=run):
+            state = tick(self.task, self.root / "state", self.now)
+        self.assertEqual(state["status"], "completed")
+        self.assertEqual([call[0] for call in self.calls], ["analysis", "analysis", "implementation", "verification"])
+        self.assertIn("continue investigation before implementation", self.calls[1][1]["prompt"])
+        self.assertEqual(state["nodes"]["root"]["stage_calls"][0]["status"], "invalid_output")
+        self.assertEqual(self.calls[2][1]["route"]["model"], "deepseek-flash")
+
+    def test_recovery_retries_local_startup_failure_without_repeating_analysis(self):
+        normal = self.fake()
+        def startup_failure(task, ns, save, folder, stop):
+            if ns['stage'] == 'analysis':
+                return normal(task, ns, save, folder, stop)
+            (folder / 'events.jsonl').write_bytes(b'')
+            (folder / 'stderr.log').write_text('Error: missing catalog (os error 2)\n')
+            ns.update(status='interrupted', session_id=None, pid=None, exit_code=1, reason='startup failed')
+            save(ns)
+        with patch('reqflow_scheduler.dispatch.run', side_effect=startup_failure):
+            saved = tick(self.task, self.root / 'state', self.now)
+        analysis = copy.deepcopy(saved['nodes']['root']['results']['analysis'])
+        continued = continue_task(self.task, self.root / 'state')
+        self.assertEqual(continued['nodes']['root']['results']['analysis'], analysis)
+        self.assertIn('no session was created', continued['nodes']['root']['stage_calls'][-1]['recovery'])
+        final = self.execute()
+        self.assertEqual(final['status'], 'completed')
+        self.assertEqual([c[0] for c in self.calls], ['analysis', 'implementation', 'verification'])
+        self.assertEqual(final['usage']['total']['calls'], 4)
+
+    def test_recovery_does_not_guess_missing_sessions_from_unknown_failures(self):
+        folder = self.root / 'attempt'
+        folder.mkdir()
+        node = dict(status='interrupted', stage='implementation', attempts=2, exit_code=1,
+                    stage_calls=[dict(stage='implementation', run_dir=str(folder))])
+        for events, error in [(b'', 'Error: authentication failed'),
+                              (b'{"type":"thread.started","thread_id":"lost"}\n', 'Error: missing file (os error 2)')]:
+            (folder / 'events.jsonl').write_bytes(events)
+            (folder / 'stderr.log').write_text(error)
+            saved = dict(status='interrupted', nodes={'root': node})
+            path = self.root / 'state/staged/state.json'
+            write(path, saved)
+            with self.assertRaisesRegex(ValueError, 'no durable session'):
+                continue_task(self.task, self.root / 'state')
+            self.assertEqual(read(path), saved)
 
     def test_failed_verification_returns_to_implementation(self):
         state = self.execute([("FAIL", "implementation"), ("PASS", "implementation")])
@@ -169,6 +288,68 @@ class StageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "route changed"):
             stages.prepare(self.task, self.task["tree"], ns, self.root / "run", dict(
                 model="deepseek-flash", model_provider="another", profile="deepseek"))
+
+    def test_large_review_evidence_is_preserved_without_overflowing_handoff(self):
+        raw = 'large tool evidence ' * 100000
+        ns = dict(stage='verification', results={'analysis': result('analysis'),
+                  'implementation': result('implementation')},
+                  artifacts=[dict(stage='implementation', run_dir='previous-run',
+                                  tool_results=[dict(command='test', exit_code=1, aggregated_output=raw)])],
+                  feedback=[dict(event_id='run-1', logs=raw)])
+        folder = self.root / 'review'
+        with patch('reqflow_scheduler.stages.evidence', return_value={'diff': {'output': raw}}):
+            prepared = stages.prepare(self.task, self.task['tree'], ns, folder)
+        self.assertLess(len(prepared['prompt']), 100000)
+        saved = read(folder / 'context.json')
+        self.assertEqual(saved['prior_artifacts'][0]['tool_results'][0]['aggregated_output'], raw)
+        self.assertEqual(saved['feedback'][0]['logs'], raw)
+        self.assertEqual(saved['repository_evidence']['diff']['output'], raw)
+        self.assertEqual(saved['original_requirements'], self.task['tree']['prompt'])
+        self.assertIn('failed_command_count', prepared['prompt'])
+        self.assertIn(str(folder / 'context.json').replace('\\', '\\\\'), prepared['prompt'])
+
+    def test_rejected_first_turn_resumes_same_session_with_repaired_context(self):
+        previous = self.root / 'rejected'
+        previous.mkdir()
+        (previous / 'stderr.log').write_text('Error: turn/start failed: {"input_error_code":"input_too_large"}')
+        (previous / 'events.jsonl').write_text('{"type":"thread.started","thread_id":"exact-review"}\n')
+        route = {**ROUTES['verification'], 'model_provider': 'openai'}
+        ns = dict(stage='verification', session_id='exact-review',
+                  stage_calls=[dict(**route, run_dir=str(previous))])
+        repaired = stages.prepare(self.task, self.task['tree'], ns, self.root / 'retry', route)
+        self.assertNotEqual(repaired['prompt'], '继续')
+        self.assertIn('Verify independently', repaired['prompt'])
+        self.assertEqual(ns['session_id'], 'exact-review')
+        command = dispatch.command(repaired, ns['session_id'])
+        self.assertIn('exact-review', command)
+        (previous / 'events.jsonl').write_text('{"type":"turn.started"}\n')
+        normal = stages.prepare(self.task, self.task['tree'], ns, self.root / 'normal', route)
+        self.assertEqual(normal['prompt'], '继续')
+
+    def test_missing_input_rejected_thread_restarts_only_unstarted_stage(self):
+        calls = []
+        for index, error in enumerate(['Error: {"input_error_code":"input_too_large"}',
+                                       'Error: no rollout found for thread id empty-review']):
+            folder = self.root / str(index)
+            folder.mkdir()
+            (folder / 'events.jsonl').write_text('{"type":"thread.started","thread_id":"empty-review"}\n' if index == 0 else '')
+            (folder / 'stderr.log').write_text(error)
+            calls.append(dict(stage='verification', session_id='empty-review', run_dir=str(folder)))
+        node = dict(status='interrupted', stage='verification', session_id='empty-review',
+                    attempts=2, pid=None, stage_calls=calls, results={'analysis': result('analysis')})
+        path = self.root / 'state/staged/state.json'
+        saved = dict(status='interrupted', nodes={'root': node})
+        write(path, saved)
+        resumed = continue_task(self.task, self.root / 'state')['nodes']['root']
+        self.assertNotIn('session_id', resumed)
+        self.assertEqual(resumed['stage'], 'verification')
+        self.assertEqual(resumed['results'], node['results'])
+        self.assertEqual([c['session_id'] for c in resumed['stage_calls']], ['empty-review', 'empty-review'])
+        self.assertIn('no rollout', resumed['stage_calls'][-1]['recovery'])
+        (self.root / '0/events.jsonl').write_text('{"type":"turn.started"}\n')
+        write(path, saved)
+        valid = continue_task(self.task, self.root / 'state')['nodes']['root']
+        self.assertEqual(valid['session_id'], 'empty-review')
 
     def test_task_routes_load_relative_to_task_and_versions_validate(self):
         config = self.root / "routes.toml"

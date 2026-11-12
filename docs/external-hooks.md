@@ -27,6 +27,8 @@ agenthook 调用 `python -m reqflow_scheduler submit TASK` 并检查返回的 JS
 
 本机 Agenthook 新增可选 `scheduler_task` / `scheduler_node` / `scheduler_config` / `scheduler_state_dir` 配置；关联后会自动先反馈再提交原任务，通过和失败结果均送往 Verification。未关联时维持原有生成优化任务树的行为。模型路由只配置在 Scheduler。完整配置、预算、恢复和外置源码补丁见[分阶段调度说明](stage-orchestration.md)。
 
+外置 Agenthook 的 `agenthook recover` 现可在机器重启后统一恢复 hook 与已派发的 Scheduler 任务：优先读取本地完成证据，再调用 `continue` 原任务并更新派发回执。`continue` 保存最新 watcher PID，重复恢复复用存活的 watcher，完成任务不重跑。已记录的本地文件缺失启动失败，仅在退出码非零、事件日志为空且没有会话时允许重试原阶段；其他缺失会话仍拒绝推测恢复。已有分析结果、失败调用和预算保留。
+
 ## 同步与保存
 
 Scheduler 的通用 submit 入口及测试应作为 Git 提交保留；外置组件和私有状态保留在仓库外。更新远程代码时合并或 rebase 该功能分支。若切换到尚未包含该提交的 main，需先合入功能提交再启动外置回调。

@@ -73,9 +73,20 @@ scheduler continue my-project-001 --task-dir D:/tasks
 它要求已有任务树检查点，支持与 `watch` 相同的 `--config`、`--interval-seconds`、`--state-dir`，保留额度等待与时间策略。
 原进程仍在运行、执行过的节点缺少会话 ID 时拒绝恢复；运行节点缺少 PID 时需先人工检查进程，再执行 `recover --inspected`。
 
+`view ID` 和 `continue ID` 优先在 `--task-dir`（默认安装目录 `config`）查找定义；未找到时，
+读取所选 `--state-dir` 内该任务的 `submit.json`，使用其中记录的定义路径。外部项目提交的任务因此可直接用 ID 查找，
+`list` 也会显示其定义路径和节点总数。定义文件须仍存在且 ID 匹配；缺少记录的旧任务仍需提供文件路径或 `--task-dir`。
+
 `watch` 在无人登录的后台运行需由操作系统服务或任务计划程序托管。`scripts/print-windows-task.ps1` 输出每分钟调用 `tick` 的任务 XML，可导入 Windows 任务计划程序；脚本本身不注册任务。只更新插件不会自动启动没有配置工作区和提示词的示例任务。
 
 状态默认保存在用户目录 `.reqflow-scheduler/<id>`，可通过 `--state-dir` 指定。每个节点保留 JSONL、stderr、退出码及精确会话 ID。同任务和工作区使用操作系统锁互斥；同一工作区仅使用一个 OS/runtime，不同时在 Windows 与 WSL 中调度。
+
+任务树全部完成后，按完成状态自动归档，默认 `scheduler list` 不再显示；`scheduler list --all` 包含归档任务。
+`scheduler rm 任务ID` 彻底删除任务定义、检查点和日志，支持 `--task-dir`、`--state-dir`。只有检查点、找不到定义的任务也可删除；提交记录指向的外部定义一并删除，项目源码保留。删除后 `list --all` 也不会显示。
+按 ID 批量匹配可用 `scheduler rm 'arcbench-*'`（支持 `*`、`?`、`[abc]`），或 `scheduler rm --regex '^arcbench-.*$'`（完整正则，匹配整个 ID）。模式加引号，匹配区分大小写；无匹配返回错误。逐项检查任务及状态目录边界；锁被占用、watcher/子进程仍在运行、运行节点缺少 PID、目录越界或删除失败时，跳过该任务，继续处理其他匹配项。返回 `ids` 和带原因的 `skipped`，状态为 `removed`、`partial` 或 `skipped`；存在跳过项时退出码为 3。
+`scheduler stop 任务ID` 支持 `--task-dir`、`--state-dir`，直接对已有状态目录写入停止标记，即使任务定义已丢失也可停止；仍支持定义文件路径。该命令不派发任务或查询额度，watcher/子进程在后续轮询处理停止标记后退出，再重试删除。
+已有完成记录也会自动隐藏。任务定义、检查点和日志保留原位，`status`、`view` 仍可查询，重复提交不会重新执行。
+启用 `allow_append` 的任务追加未完成节点后，会重新出现在活动列表并显示为 `queued`，直到新增层级完成。
 
 退出码：0 为检查完成/等待/完成/停止；1 为配置或额度查询错误；2 为 blocked/interrupted/running；3 为互斥 busy。
 

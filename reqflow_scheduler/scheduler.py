@@ -352,9 +352,17 @@ def recover(task, root, inspected=False, *, automatic=False):
                     raise ValueError(f"child process {ns['pid']} is still running; wait for it to exit before continuing")
                 if ns.get("status") == "running" and not ns.get("pid"):
                     raise ValueError("child launch has no durable PID; inspect processes, then use recover --inspected")
-        if any(not ns.get("session_id") and ns.get("attempts", 0)
-               and not ("orchestration" in task and ns.get("status") in {"queued", "turn_completed"}) for ns in pending):
+        missing = [ns for ns in pending if not ns.get("session_id") and ns.get("attempts", 0)
+                   and not ("orchestration" in task and ns.get("status") in {"queued", "turn_completed"})]
+        if any("orchestration" not in task or not stages.failed_before_session(ns) for ns in missing):
             raise ValueError("no durable session id; inspect logs before creating a new task")
+        for ns in missing:
+            ns["stage_calls"][-1]["recovery"] = "Retry local file-not-found startup failure; no session was created"
+        for ns in pending:
+            if "orchestration" in task and stages.missing_unstarted_session(ns):
+                ns["stage_calls"][-1]["recovery"] = (
+                    "Retry unstarted stage: first input rejected and server has no rollout for " + ns["session_id"])
+                ns.pop("session_id")
         for ns in pending:
             if "orchestration" in task and ns.get("status") == "turn_completed":
                 continue  # Apply the saved output without launching another model turn.

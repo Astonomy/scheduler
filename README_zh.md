@@ -172,9 +172,16 @@ scheduler view D:/code/scheduler/config/你的任务.json
 `.reqflow-scheduler` 下的运行记录，显示状态、已完成/总节点数、当前节点及绝对路径，
 排除示例任务。其他目录使用 `--task-dir D:/tasks`、`--state-dir D:/scheduler-state` 指定。
 只有运行记录、找不到定义的任务也会列出；列表不会执行任务或查询额度。
+整棵任务树完成后默认自动归档，不再出现在 `list` 中；已有的完成记录同样适用。
+使用 `scheduler list --all` 查看包含归档任务的完整列表。
+`scheduler rm 任务ID` 彻底删除任务定义和整个状态目录（含检查点、日志），也删除提交记录指向的外部任务定义，保留项目源码。支持 `--task-dir`、`--state-dir`。批量删除用 `scheduler rm 'arcbench-*'`，支持 `*`、`?`、`[abc]` 通配符；完整正则用 `scheduler rm --regex '^arcbench-.*$'`，匹配整个 ID。模式请加引号。逐项检查并删除；正在运行、锁被占用或删除失败的任务跳过，继续处理其他匹配项。结果的 `ids` 列出已删除任务，`skipped` 列出跳过 ID 和原因；有跳过项时退出码为 3。`scheduler stop 任务ID` 支持仅剩检查点的任务，可先停止并等待 watcher/子进程退出后重试删除。删除后 `list --all` 也不再显示。
+归档按完成状态处理，任务定义、检查点和日志保留原位，仍可用 `status`、`view` 查看，重复提交不会重跑已完成节点。
+启用 `allow_append` 的任务追加未完成节点后，会重新出现在活动列表并显示为 `queued`，直到新增层级完成。
 `view` 支持任务 ID 或文件路径，例如 `scheduler view reqcomp-cycle-20261031-retry-001`。
 任务 ID 按安装目录 `config` 中 JSON 的 `id` 字段查找，可用 `--task-dir D:/tasks` 改变查找目录；
-重复 ID 需使用明确的文件路径。只有状态记录、没有任务定义时无法重建任务树。
+重复 ID 需使用明确的文件路径。目录中未找到 ID 时，还会读取所选状态目录内 `submit`/`continue` 保存的定义路径，
+因此外部项目提交的任务也能直接用 ID 查看或继续；`list` 同样会显示其定义路径和节点总数。
+记录指向的定义文件须仍存在且 ID 匹配。只有状态记录、没有任务定义时无法重建任务树。
 若执行时自定义了 `--state-dir`，查看时也需传入相同目录。
 
 ```powershell
