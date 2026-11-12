@@ -38,7 +38,8 @@ def render_tree(task, state):
     def visit(node, prefix="", branch="", following=""):
         status = state.get("nodes", {}).get(node["id"], {}).get("status", "queued")
         marker = "✓" if status == "completed" else spinner if node["id"] in active else "-"
-        lines.append(f"{prefix}{branch}{node['id']} {marker}")
+        stage = state.get("nodes", {}).get(node["id"], {}).get("stage")
+        lines.append(f"{prefix}{branch}{node['id']} {marker}" + (f" [{stage}]" if stage else ""))
         children = node.get("children", [])
         for index, child in enumerate(children):
             last = index == len(children) - 1

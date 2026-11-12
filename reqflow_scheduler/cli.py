@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 
-from . import quota_adapter
+from . import quota_adapter, routing, stages
 from .config import load_config
 from .view import render_tree
 from .scheduler import continue_task, fingerprint, load_task, paths, process_running, recover, tick, validate_extension
@@ -24,13 +24,18 @@ def main(argv=None):
     list_parser = sub.add_parser("list", help="list task definitions and saved progress; never dispatch")
     list_parser.add_argument("--task-dir", default=str(DEFAULT_TASK_DIR))
     list_parser.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
-    for name in ("tick", "watch", "submit", "continue", "quota", "status", "stop", "recover", "view"):
+    for name in ("tick", "watch", "submit", "continue", "quota", "status", "stop", "recover", "view", "models", "usage", "feedback"):
         p = sub.add_parser(name)
         p.add_argument("task")
         p.add_argument("--config", metavar="FILE")
         p.add_argument("--state-dir", default=str(Path.home() / ".reqflow-scheduler"))
         if name == "recover":
             p.add_argument("--inspected", action="store_true")
+        if name == "feedback":
+            source = p.add_mutually_exclusive_group(required=True)
+            source.add_argument("--event", help="version 1 Scheduler feedback JSON")
+            source.add_argument("--completion", help="existing Agenthook completion.json and sibling artifacts")
+            p.add_argument("--node", help="target node for Agenthook completion (default: root)")
         if name in {"watch", "submit", "continue", "view"}:
             p.add_argument("--interval-seconds", type=int)
         if name == "watch":
@@ -59,6 +64,23 @@ def main(argv=None):
             default_interval = 2 if args.action == "view" and not args.config else config["interval_seconds"]
             args.interval_seconds = args.interval_seconds if args.interval_seconds is not None else default_interval
         folder, state_path, stop_path = paths(task, args.state_dir)
+        if args.action == "models":
+            routes, errors = {}, {}
+            for stage in routing.STAGES:
+                try:
+                    routes[stage] = routing.resolve(task, stage)
+                except (ValueError, OSError) as exc:
+                    errors[stage] = str(exc)
+            print(json.dumps(dict(status="blocked" if errors else "validated", routes=routes, errors=errors), ensure_ascii=False, indent=2))
+            return 2 if errors else 0
+        if args.action == "usage":
+            print(json.dumps(stages.usage_summary(read(state_path, {})), ensure_ascii=False, indent=2))
+            return 0
+        if args.action == "feedback":
+            event = read(Path(args.event)) if args.event else stages.agenthook_event(task, args.completion, args.node)
+            result = stages.feedback(task, args.state_dir, event)
+            print(json.dumps(dict(id=task["id"], status=result["status"], reason=result.get("reason")), ensure_ascii=False))
+            return 0
         if args.action in {"watch", "submit", "continue", "view"} and args.interval_seconds < 1:
             raise ValueError("interval must be positive")
         if args.action in {"submit", "continue"}:

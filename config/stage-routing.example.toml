@@ -1,0 +1,22 @@
+# Codex CLI 0.166.0: IDs confirmed with model/list on 2026-11-11.
+# Provider authentication remains in CODEX_HOME. This file contains no keys.
+[model_routing]
+version = 1
+
+[model_routing.analysis]
+provider = "codex"
+model_provider = "openai"
+model = "gpt-6-astra"
+reasoning_effort = "high"
+
+[model_routing.implementation]
+provider = "codex"
+profile = "deepseek"
+model = "deepseek-flash"
+# Inherit reasoning effort and provider configuration from deepseek.config.toml.
+
+[model_routing.verification]
+provider = "codex"
+model_provider = "openai"
+model = "gpt-6.1-sol"
+reasoning_effort = "medium"

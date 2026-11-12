@@ -41,6 +41,8 @@ flowchart LR
 
 额度通过 Codex app-server 的 `account/rateLimits/read` 读取，查询不启动模型 turn。无法读取时延后调度；重置后重新查询，再决定是否恢复。
 
+可选的[分阶段多模型调度](docs/stage-orchestration.md)支持 Analysis → Implementation → Verification 独立模型、有限修复循环、Agenthook 反馈和阶段用量统计。任务显式启用 `orchestration` 后生效。参照 `config/stage-task.example.json`，派发前用 `scheduler models TASK` 检查实际 Codex 模型与现有 profile。
+
 ## 快速开始
 
 需要 **Python 3.11+、Git，以及已安装并登录的 Codex CLI**。以下使用 Windows PowerShell。

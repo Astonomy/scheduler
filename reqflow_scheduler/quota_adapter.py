@@ -18,8 +18,9 @@ def timestamp(value):
     return result.astimezone(timezone.utc)
 
 
-def fetch(task):
-    process = subprocess.Popen([*executable(task), "app-server"], stdin=subprocess.PIPE,
+def rpc(task, method, params=None, options=()):
+    """One read-only app-server request, without starting a model turn."""
+    process = subprocess.Popen([*executable(task), *options, "app-server"], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                                start_new_session=os.name != 'nt')
@@ -51,7 +52,8 @@ def fetch(task):
                 raise ValueError("quota app-server closed")
             if message.get("id") == identifier:
                 if "error" in message:
-                    raise ValueError("quota query failed: " + str(message["error"].get("message")))
+                    # Provider errors may contain credential configuration values.
+                    raise ValueError(method + " failed in Codex app-server")
                 return message["result"]
             if time.monotonic() >= deadline:
                 raise ValueError("quota query timed out")
@@ -60,7 +62,7 @@ def fetch(task):
         send(dict(id=1, method="initialize", params=dict(clientInfo=dict(name="reqflow_scheduler", version="0.2.0"))))
         response(1)
         send(dict(method="initialized"))
-        send(dict(id=2, method="account/rateLimits/read"))
+        send(dict(id=2, method=method, params=params or {}))
         return response(2)
     finally:
         terminate(process)
@@ -68,6 +70,10 @@ def fetch(task):
         reader.join(timeout=5)
         if not reader.is_alive():
             process.stdout.close()
+
+
+def fetch(task):
+    return rpc(task, "account/rateLimits/read")
 
 
 def normalize(result, now, limit_id="codex"):

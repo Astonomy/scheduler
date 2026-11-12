@@ -1,0 +1,119 @@
+--- a/agenthook/hook.py
++++ b/agenthook/hook.py
+@@ -66,7 +66,7 @@
+ def dispatch(config, result):
+     """Submit exactly one task file to the existing scheduler, preserving its policy."""
+     folder = Path(result["artifacts"])
+-    task = folder / "scheduler-task.json"
++    task = Path(config["scheduler_task"]) if config.get("scheduler_task") else folder / "scheduler-task.json"
+     receipt = folder / "dispatch.json"
+     existing = read_json(receipt)
+     if existing:
+@@ -76,10 +76,29 @@
+             raise ValueError(f"Scheduler launch has an uncertain outcome. Inspect {receipt} before retrying.")
+         return existing
+     if not task.is_file():
++        if config.get("scheduler_task"):
++            raise ValueError("Configured scheduler_task does not exist.")
+         return {"phase": "complete", "decision": result["decision"]}
+     scheduler_dir = scheduler_directory(config)
+     write_json(receipt, {"phase": "launching", "task": str(task)})
+-    response = subprocess.run([sys.executable, "-m", "reqflow_scheduler", "submit", str(task)],
++    options = []
++    for setting, flag in (("scheduler_config", "--config"), ("scheduler_state_dir", "--state-dir")):
++        if config.get(setting):
++            options += [flag, config[setting]]
++    if config.get("scheduler_task"):
++        command = [sys.executable, "-m", "reqflow_scheduler", "feedback", str(task),
++                   "--completion", str(folder / "completion.json"), *options]
++        if config.get("scheduler_node"):
++            command += ["--node", config["scheduler_node"]]
++        feedback = subprocess.run(command, cwd=scheduler_dir, stdin=subprocess.DEVNULL,
++            capture_output=True, text=True, encoding="utf-8", timeout=90,
++            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
++            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
++        (folder / "scheduler-feedback.log").write_text(feedback.stdout + feedback.stderr, encoding="utf-8")
++        if feedback.returncode:
++            write_json(receipt, {"phase": "failed", "task": str(task), "exit_code": feedback.returncode})
++            raise ValueError(f"Scheduler rejected feedback. Inspect {folder / 'scheduler-feedback.log'}.")
++    response = subprocess.run([sys.executable, "-m", "reqflow_scheduler", "submit", str(task), *options],
+         cwd=scheduler_dir, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+         env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=90,
+         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+--- a/agenthook/workflow.py
++++ b/agenthook/workflow.py
+@@ -21,6 +21,9 @@
+         config[name] = str((path.parent / config[name]).resolve())
+     if "scheduler_dir" in config:
+         config["scheduler_dir"] = str((path.parent / config["scheduler_dir"]).resolve())
++    for name in ("scheduler_task", "scheduler_config", "scheduler_state_dir"):
++        if name in config:
++            config[name] = str((path.parent / config[name]).resolve())
+     config["config_path"] = str(path)
+     if not Path(config["workspace"]).is_dir():
+         raise ValueError("Agent workspace does not exist.")
+@@ -202,7 +205,7 @@
+         report["page_evidence"] = page_evidence
+         write_json(folder / "analysis.json", report)
+         (folder / "report.md").write_text(markdown(report, url), encoding="utf-8")
+-        if report["decision"] == "optimize":
++        if report["decision"] == "optimize" and not config.get("scheduler_task"):
+             write_json(folder / "scheduler-task.json", scheduler_task(config, report, folder))
+         result = {"status": "completed", "run_id": run_id, "url": url, "decision": report["decision"],
+             "passed": report["passed"], "total": report["total"], "competition_score": report["competition_score"],
+--- a/tests/test_hook.py
++++ b/tests/test_hook.py
+@@ -143,6 +143,15 @@
+         self.assertEqual(result["decision"], "complete")
+         self.assertFalse((self.root / "artifacts/run1/scheduler-task.json").exists())
+ 
++    def test_bound_task_keeps_artifacts_without_generating_a_new_optimization_tree(self):
++        self.client.run = evaluated()
++        self.config["scheduler_task"] = str(self.root / "existing-stage-task.json")
++        result = poll(self.client, self.config, "run1")
++        self.assertEqual(result["decision"], "optimize")
++        self.assertTrue((self.root / "artifacts/run1/completion.json").exists())
++        self.assertTrue((self.root / "artifacts/run1/logs.json").exists())
++        self.assertFalse((self.root / "artifacts/run1/scheduler-task.json").exists())
++
+     def test_wrong_task_is_rejected(self):
+         self.client.run = evaluated(requirement_id="another")
+         with self.assertRaisesRegex(ValueError, "different task"):
+@@ -227,6 +236,37 @@
+         launch.assert_not_called()
+         self.assertEqual(result["phase"], "complete")
+ 
++    def test_bound_task_forwards_completion_before_submit_even_when_tests_pass(self):
++        folder = self.root / "run1"
++        folder.mkdir()
++        task = self.root / "stage-task.json"
++        task.write_text("{}")
++        self.config.update(scheduler_task=str(task), scheduler_node="feature")
++        response = Mock(returncode=0, stdout='{"status":"waiting","scheduler_pid":123}', stderr='')
++        with patch("agenthook.hook.subprocess.run", return_value=response) as launch:
++            first = dispatch(self.config, {"artifacts": str(folder), "decision": "complete"})
++            repeat = dispatch(self.config, {"artifacts": str(folder), "decision": "complete"})
++        self.assertEqual(first, repeat)
++        self.assertEqual(launch.call_count, 2)
++        feedback_command = launch.call_args_list[0].args[0]
++        self.assertIn("feedback", feedback_command)
++        self.assertIn(str(folder / "completion.json"), feedback_command)
++        self.assertIn("feature", feedback_command)
++        self.assertEqual(launch.call_args_list[1].args[0][-1], str(task))
++
++    def test_bound_task_feedback_rejection_prevents_submission(self):
++        folder = self.root / "run1"
++        folder.mkdir()
++        task = self.root / "stage-task.json"
++        task.write_text("{}")
++        self.config["scheduler_task"] = str(task)
++        response = Mock(returncode=1, stdout='', stderr='feedback rejected')
++        with patch("agenthook.hook.subprocess.run", return_value=response) as launch:
++            with self.assertRaisesRegex(ValueError, "feedback"):
++                dispatch(self.config, {"artifacts": str(folder), "decision": "optimize"})
++        self.assertEqual(launch.call_count, 1)
++        self.assertEqual(json.loads((folder / "dispatch.json").read_text())["phase"], "failed")
++
+     def test_rejected_scheduler_submission_is_not_reported_as_scheduled(self):
+         folder = self.root / "run1"
+         folder.mkdir()

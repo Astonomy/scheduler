@@ -41,6 +41,8 @@ flowchart LR
 
 Quota is read through Codex app-server's `account/rateLimits/read` without starting a model turn. Unavailable quota data delays dispatch. After reset, Scheduler queries quota again before resuming.
 
+Optional [stage-aware multi-model orchestration](docs/stage-orchestration.md) adds independent Analysis → Implementation → Verification sessions, bounded repair loops, Agenthook feedback and per-stage usage. Existing task behavior is unchanged unless `orchestration` is enabled. Start with `config/stage-task.example.json` and run `scheduler models TASK` to validate the existing Codex models/profile before dispatch.
+
 ## Quick start
 
 Requirements: **Python 3.11+, Git, and an installed, authenticated Codex CLI**. Examples use Windows PowerShell.

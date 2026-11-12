@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import re
 
-from . import dispatch, quota_adapter
+from . import dispatch, quota_adapter, routing, stages
 from .state_store import lock, read, write
 
 
@@ -47,6 +47,18 @@ def load_task(path):
         raise ValueError("schedule_policy must be windowed or continuous")
     if not isinstance(task.get("allow_append", False), bool):
         raise ValueError("allow_append must be a boolean")
+    if "routing_config" in task:
+        from .config import load_config
+        config = load_config(path.parent / task["routing_config"])
+        if "model_routing" not in config:
+            raise ValueError("routing_config must contain model_routing")
+        task["model_routing"] = config["model_routing"]
+    if "model_routing" in task:
+        routing.validate(task["model_routing"])
+    if "orchestration" in task:
+        stages.policy(task)
+        if any(node.get("session_id") for node in nodes(task["tree"])):
+            raise ValueError("stage tasks require independent sessions; remove node session_id")
     return task
 
 
@@ -70,6 +82,9 @@ def levels(root):
 def fingerprint(task):
     # Only execution content matters; schedule_policy is a mutable dispatch setting.
     content = {key: task.get(key) for key in ("workspace", "tree", "codex", "timeout_seconds")}
+    for key in ("orchestration", "model_routing"):
+        if key in task:
+            content[key] = task[key]
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
@@ -80,7 +95,7 @@ def validate_extension(task, state):
         raise ValueError("task tree changed after dispatch; use a new task id")
     if state.get("status") != "completed":
         raise ValueError("finish the current tree before appending levels")
-    for key in ("workspace", "codex", "timeout_seconds"):
+    for key in ("workspace", "codex", "timeout_seconds", "orchestration", "model_routing"):
         if task.get(key) != previous.get(key):
             raise ValueError(f"cannot change dispatched execution setting: {key}")
     old_levels, new_levels = list(levels(previous["tree"])), list(levels(task["tree"]))
@@ -101,7 +116,7 @@ def validate_extension(task, state):
 def execution_snapshot(task):
     """Detach the accepted execution definition from mutable caller objects."""
     return json.loads(json.dumps({key: task.get(key) for key in
-        ("workspace", "tree", "codex", "timeout_seconds", "allow_append")}))
+        ("workspace", "tree", "codex", "timeout_seconds", "allow_append", "orchestration", "model_routing")}))
 
 
 def paths(task, root):
@@ -119,6 +134,10 @@ def sleeping(now, task=None):
 def tick(task, root, now=None, on_running=None):
     # Injected time is fixed for tests; real runs recheck time after each node.
     clock = (lambda: now) if now is not None else (lambda: datetime.now(timezone.utc))
+    staged = "orchestration" in task
+    if staged:
+        stages.policy(task)
+        routing.validate(task.get("model_routing"))
     folder, state_path, stop_path = paths(task, root)
     with lock("task:" + str(state_path)), lock("workspace:" + os.path.normcase(task["workspace"])):
         state = read(state_path, {"id": task["id"], "status": "queued", "nodes": {}})
@@ -131,7 +150,9 @@ def tick(task, root, now=None, on_running=None):
 
         def save():
             with save_lock:
-                snapshot = {**state, "nodes": {key: value.copy() for key, value in state["nodes"].items()}}
+                if staged:
+                    state["usage"] = stages.usage_summary(state)
+                snapshot = json.loads(json.dumps(state))
                 write(state_path, snapshot)
                 if on_running and snapshot.get("status") == "running":
                     running = [key for key, node in snapshot["nodes"].items()
@@ -154,6 +175,15 @@ def tick(task, root, now=None, on_running=None):
             current_time = clock()
             if stop_path.exists():
                 return wait("stop requested", status="stopped")
+            if staged:
+                try:
+                    for ns in state["nodes"].values():
+                        if ns.get("status") == "turn_completed":
+                            stages.finish(task, ns, Path(ns["stage_calls"][-1]["run_dir"]))
+                            save()
+                    stages.drain_feedback(task, state, folder)
+                except ValueError as exc:
+                    return wait(str(exc), status="blocked")
             batch = next(([n for n in level if state["nodes"].get(n["id"], {}).get("status") != "completed"]
                           for level in levels(task["tree"])
                           if any(state["nodes"].get(n["id"], {}).get("status") != "completed" for n in level)), [])
@@ -188,6 +218,24 @@ def tick(task, root, now=None, on_running=None):
                     return wait("outside daytime reset window", window.isoformat())
                 if state.get("daytime_window") == quota["resets_at"]:
                     return wait("current node already submitted in this daytime window", quota["resets_at"])
+            prepared = {}
+            if staged:
+                remaining = stages.policy(task)["max_calls"] - stages.usage_summary(state)["total"]["calls"]
+                # Reserve calls before launching parallel siblings. A token budget
+                # serializes stages so every call observes the latest usage.
+                batch = batch[:max(1, min(remaining, 1 if "max_tokens" in stages.policy(task) else len(batch)))]
+                try:
+                    # Check every target before spending tokens on the first stage.
+                    initial_routes = {stage: routing.resolve(task, stage) for stage in routing.STAGES} if not any(
+                        ns.get("stage_calls") for ns in state["nodes"].values()) else {}
+                    for node in batch:
+                        ns = state["nodes"][node["id"]]
+                        stages.check_budget(task, state, ns, len(batch))
+                        run_dir = folder / "runs" / node["id"] / str(ns["attempts"] + 1)
+                        prepared[node["id"]] = stages.prepare(task, node, ns, run_dir, initial_routes.get(ns.get("stage", "analysis")))
+                except (ValueError, OSError) as exc:
+                    return wait(str(exc), status="blocked")
+                state["current_nodes"] = [node["id"] for node in batch]
             state.update(status="running", fingerprint=fingerprint(task), next_check_at=None, reason=None)
             if task.get("allow_append"):
                 state["execution_task"] = execution_snapshot(task)
@@ -195,19 +243,31 @@ def tick(task, root, now=None, on_running=None):
                 state["daytime_window"] = quota["resets_at"]
             for node in batch:
                 ns = state["nodes"][node["id"]]
+                if staged:
+                    stages.begin(task, node, ns, prepared[node["id"]], folder / "runs" / node["id"] / str(ns["attempts"] + 1))
                 ns.update(status="running", attempts=ns["attempts"] + 1, started_at=current_time.isoformat())
             save()
 
             def run_node(node):
                 ns = state["nodes"][node["id"]]
-                run_task = {**task, "prompt": "继续" if ns.get("session_id") else node["prompt"]}
+                run_task = prepared[node["id"]] if staged else {**task, "prompt": "继续" if ns.get("session_id") else node["prompt"]}
                 if not ns.get("session_id") and node.get("session_id"):
                     ns["session_id"] = node["session_id"]
+
+                def save_dispatch(value):
+                    if staged and value.get("status") == "completed":
+                        value["status"] = "turn_completed"
+                    save()
+
                 try:
-                    dispatch.run(run_task, ns, lambda value: save(), folder / "runs" / node["id"] / str(ns["attempts"]), stop_path)
+                    dispatch.run(run_task, ns, save_dispatch, folder / "runs" / node["id"] / str(ns["attempts"]), stop_path)
                 except (Exception, KeyboardInterrupt) as exc:
                     ns.update(status="interrupted", reason=str(exc) or type(exc).__name__, pid=None)
                     save()
+                finally:
+                    if staged:
+                        stages.finish(task, ns, folder / "runs" / node["id"] / str(ns["attempts"]))
+                        save()
 
             with ThreadPoolExecutor(max_workers=len(batch)) as executor:
                 try:
@@ -218,7 +278,7 @@ def tick(task, root, now=None, on_running=None):
                     save()
                     raise
             failed = [state["nodes"][node["id"]] for node in batch
-                      if state["nodes"][node["id"]]["status"] != "completed"]
+                      if state["nodes"][node["id"]]["status"] not in ({"completed", "queued"} if staged else {"completed"})]
             if failed:
                 if all(ns.get("reason") not in {"timeout", "stopped"} for ns in failed):
                     try:
@@ -292,9 +352,12 @@ def recover(task, root, inspected=False, *, automatic=False):
                     raise ValueError(f"child process {ns['pid']} is still running; wait for it to exit before continuing")
                 if ns.get("status") == "running" and not ns.get("pid"):
                     raise ValueError("child launch has no durable PID; inspect processes, then use recover --inspected")
-        if any(not ns.get("session_id") and ns.get("attempts", 0) for ns in pending):
+        if any(not ns.get("session_id") and ns.get("attempts", 0)
+               and not ("orchestration" in task and ns.get("status") in {"queued", "turn_completed"}) for ns in pending):
             raise ValueError("no durable session id; inspect logs before creating a new task")
         for ns in pending:
+            if "orchestration" in task and ns.get("status") == "turn_completed":
+                continue  # Apply the saved output without launching another model turn.
             ns.update(status="queued", reason=None, pid=None)
         stop_path.unlink(missing_ok=True)
         state.update(status="queued", reason="checkpoint continued" if automatic else "operator inspected recovery", next_check_at=None)

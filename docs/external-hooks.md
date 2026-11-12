@@ -21,6 +21,12 @@ scheduler submit D:/code/481/agenthook/artifacts/<run-id>/scheduler-task.json
 
 agenthook 调用 `python -m reqflow_scheduler submit TASK` 并检查返回的 JSON 回执。优化节点修改 agent，提交节点只打包、上传并重新挂接外置 hook，随后结束该 Codex turn。等待、网页取证与触发下一轮任务由外置进程完成。
 
+## 分阶段任务的反馈
+
+显式启用三阶段流程的任务可使用 `scheduler feedback TASK --completion artifacts/RUN_ID/completion.json --node NODE_ID`。Scheduler 会保存测试、日志、原始 run/task ID 和上下文，并在 Verification 中独立判断 PASS/FAIL。运行期间的回调先写入持久收件箱；重复事件去重，停止或中断仍需原有恢复流程。随后 `submit TASK` 继续遵循时段和额度策略。
+
+本机 Agenthook 新增可选 `scheduler_task` / `scheduler_node` / `scheduler_config` / `scheduler_state_dir` 配置；关联后会自动先反馈再提交原任务，通过和失败结果均送往 Verification。未关联时维持原有生成优化任务树的行为。模型路由只配置在 Scheduler。完整配置、预算、恢复和外置源码补丁见[分阶段调度说明](stage-orchestration.md)。
+
 ## 同步与保存
 
 Scheduler 的通用 submit 入口及测试应作为 Git 提交保留；外置组件和私有状态保留在仓库外。更新远程代码时合并或 rebase 该功能分支。若切换到尚未包含该提交的 main，需先合入功能提交再启动外置回调。

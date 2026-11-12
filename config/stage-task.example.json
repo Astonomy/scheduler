@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "stage-example",
+  "workspace": "D:/code/your-project",
+  "routing_config": "stage-routing.example.toml",
+  "orchestration": {
+    "version": 1,
+    "max_calls": 18,
+    "max_cycles": 3,
+    "max_stage_attempts": 2
+  },
+  "tree": {
+    "id": "feature",
+    "prompt": "Replace this with the actual requirements and acceptance criteria."
+  }
+}

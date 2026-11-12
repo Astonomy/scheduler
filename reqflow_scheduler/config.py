@@ -12,8 +12,8 @@ def load_config(path=None):
     if path is not None:
         with Path(path).open("rb") as stream:
             document = tomllib.load(stream)
-        if set(document) - {"scheduler"}:
-            raise ValueError("config supports only the [scheduler] table")
+        if set(document) - {"scheduler", "model_routing"}:
+            raise ValueError("config supports only [scheduler] and [model_routing] tables")
         values = document.get("scheduler", {})
         if not isinstance(values, dict) or set(values) - DEFAULTS.keys():
             raise ValueError("unknown scheduler configuration key")
@@ -27,4 +27,8 @@ def load_config(path=None):
             raise ValueError(f"{key} must be an integer between {low} and {high}")
     if result["night_start_hour"] == result["night_end_hour"]:
         raise ValueError("night start and end hours must differ")
+    if path is not None and "model_routing" in document:
+        from .routing import validate
+        validate(document["model_routing"])
+        result["model_routing"] = document["model_routing"]
     return result

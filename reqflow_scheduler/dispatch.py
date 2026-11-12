@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import threading
@@ -27,8 +28,13 @@ def executable(task):
 
 
 def command(task, session=None):
-    args = [*executable(task), "exec", "--json", "--dangerously-bypass-approvals-and-sandbox",
+    # Profile is a top-level option: exec resume does not expose --profile.
+    from .routing import arguments
+    route_args = arguments(task["route"]) if task.get("route") else []
+    args = [*executable(task), *route_args, "exec", "--json", "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check"]
+    if task.get("schema_path"):
+        args += ["--output-schema", str(task["schema_path"])]
     if session:
         args += ["resume", session, "-"]
     else:
@@ -56,9 +62,11 @@ def terminate(process):
 
 
 def run(task, state, save, run_dir, stop_file):
+    started = time.monotonic()
     args = command(task, state.get("session_id"))
     run_dir.mkdir(parents=True, exist_ok=True)
-    state.update(status="running", reason=None, command=args)
+    state.update(status="running", reason=None, command=args, usage=None, final_message=None,
+                 actual_model=None, tool_results=[], codex_error=None)
     save(state)  # If killed during launch, recover requires explicit operator inspection.
     completed = False
     stream_error = []
@@ -86,6 +94,20 @@ def run(task, state, save, run_dir, stop_file):
                             save(state)
                         if event.get("type") == "turn.completed":
                             completed = True
+                            state["usage"] = event.get("usage")
+                        item = event.get("item", {})
+                        if event.get("type") == "item.completed" and item.get("type") == "agent_message":
+                            state["final_message"] = item.get("text")
+                        if event.get("type") == "item.completed" and item.get("type") == "command_execution":
+                            state["tool_results"].append({k: item.get(k) for k in ("command", "exit_code", "aggregated_output")})
+                        if event.get("model"):
+                            state["actual_model"] = event["model"]
+                        if event.get("type") in {"error", "turn.failed"}:
+                            error = str(event.get("error", event.get("message", "")))
+                            if re.search(r"unknown model|model.{0,80}(not found|unavailable|not supported|does not exist)", error, re.I):
+                                state["codex_error"] = "Codex rejected the configured model; no fallback (see events.jsonl and stderr.log)"
+                            elif re.search(r"credential|api.key|environment variable|authentication|unauthorized", error, re.I):
+                                state["codex_error"] = "Codex provider authentication failed (see events.jsonl and stderr.log)"
             except Exception as exc:
                 stream_error.append(str(exc))
 
@@ -122,7 +144,8 @@ def run(task, state, save, run_dir, stop_file):
             state["exit_code"] = process.poll()
             state["pid"] = None
     state["status"] = "completed" if process.returncode == 0 and completed and not stream_error and not state.get("reason") else "interrupted"
+    state["elapsed_seconds"] = time.monotonic() - started
     if state["status"] != "completed" and not state.get("reason"):
-        state["reason"] = "; ".join(stream_error) or "Codex failed or no turn.completed event"
+        state["reason"] = "; ".join(stream_error) or state.get("codex_error") or "Codex failed or no turn.completed event; see events.jsonl and stderr.log"
     save(state)
     return state
